@@ -36,10 +36,10 @@ const MOCK_PROFILES = [
 // ── i18n ──────────────────────────────────────────────────────────────────────
 const t = {
   zh: {
-    appTitle: 'Dating Reply Assistant',
-    appSubtitle: '让每一条回复都恰到好处',
+    appTitle: 'Just My Type',
+    appSubtitle: '让每一条回复，都恰到好处 💘',
     tab1: '帮我回复', tab2: '帮我改写',
-    msgLabel: '对方发来的消息', msgPlaceholder: '粘贴对方的消息内容…',
+    msgLabel: 'his / her message', msgPlaceholder: '粘贴对方的消息内容…',
     myTextLabel: '我想说的话', myTextPlaceholder: '例如：我也喜欢看电影',
     bgLabel: '背景信息', bgHint: '可选',
     bgPlaceholder: '你们怎么认识的？聊了多久？有什么特别的话题？',
@@ -58,10 +58,10 @@ const t = {
     styles: { playful:'活泼', flirty:'撩人', witty:'机智', charming:'迷人', sincere:'真诚' },
   },
   en: {
-    appTitle: 'Dating Reply Assistant',
-    appSubtitle: 'Craft the perfect reply every time',
+    appTitle: 'Just My Type',
+    appSubtitle: 'because your reply should feel like you 💘',
     tab1: 'Reply for me', tab2: 'Rewrite for me',
-    msgLabel: 'Their message', msgPlaceholder: 'Paste what they sent you…',
+    msgLabel: 'his / her message', msgPlaceholder: 'Paste what they sent you…',
     myTextLabel: 'What I want to say', myTextPlaceholder: 'e.g. I like movies too',
     bgLabel: 'Background', bgHint: 'optional',
     bgPlaceholder: 'How did you meet? How long chatting? Shared interests?',
@@ -142,6 +142,13 @@ function getMockCards(styles, lang, pool) {
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
+const CameraIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </svg>
+)
+
 const PlusIcon = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -476,6 +483,24 @@ export default function App() {
   const [replyLoading, setReplyLoading] = useState(false)
   const [replyError,   setReplyError]   = useState('')
 
+  // Screenshot upload (reply tab)
+  const [screenshotOpen,    setScreenshotOpen]    = useState(false)
+  const [screenshotPreview, setScreenshotPreview] = useState(null)
+  const fileInputRef = useRef(null)
+
+  const handleFileChange = useCallback((e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
+    setScreenshotPreview(URL.createObjectURL(file))
+  }, [screenshotPreview])
+
+  const handleRemoveScreenshot = useCallback(() => {
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
+    setScreenshotPreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }, [screenshotPreview])
+
   // Rewrite tab
   const [rwText,    setRwText]    = useState('')
   const [rwBg,      setRwBg]      = useState('')
@@ -591,7 +616,39 @@ export default function App() {
               {mode === 'reply' && (
                 <div className="form">
                   <div className="input-card">
-                    <label className="field-label">{i.msgLabel}</label>
+                    <div className="msg-label-row">
+                      <label className="field-label">{i.msgLabel}</label>
+                      <button
+                        className={`camera-btn${screenshotOpen ? ' active' : ''}`}
+                        onClick={() => setScreenshotOpen(v => !v)}
+                        title="Upload screenshot"
+                      >
+                        <CameraIcon />
+                      </button>
+                    </div>
+                    {screenshotOpen && (
+                      <div className="screenshot-zone">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={handleFileChange}
+                        />
+                        {screenshotPreview ? (
+                          <div className="screenshot-preview">
+                            <img src={screenshotPreview} alt="screenshot preview" style={{ maxHeight: '80px' }} />
+                            <button className="screenshot-remove" onClick={handleRemoveScreenshot}>×</button>
+                          </div>
+                        ) : (
+                          <div className="screenshot-upload-area" onClick={() => fileInputRef.current?.click()}>
+                            <CameraIcon />
+                            <span>Upload a screenshot</span>
+                          </div>
+                        )}
+                        <p className="screenshot-hint">AI will read the chat and fill in the message for you</p>
+                      </div>
+                    )}
                     <textarea className="textarea" style={{ height: '110px' }} placeholder={i.msgPlaceholder} value={replyMsg}
                       onChange={e => { setReplyMsg(e.target.value); setReplyError('') }} />
                   </div>

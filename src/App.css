@@ -15,7 +15,7 @@
 .sidebar {
   width: 220px;
   flex-shrink: 0;
-  background: #FAF7F4;
+  background: #F7F7F7;
   border-right: 1px solid #E8E0D8;
   position: sticky;
   top: 0;
@@ -318,7 +318,7 @@
 
 .title-row h1 {
   margin: 0;
-  font-size: 19px;
+  font-size: 24px;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.3px;
@@ -381,7 +381,7 @@
   display: flex;
   gap: 32px;
   align-items: flex-start;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .col-left {
@@ -408,7 +408,7 @@
   position: relative;
   padding: 9px 16px 9px 0;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
   background: transparent;
   transition: color 0.15s ease;
@@ -460,7 +460,7 @@
 .field-label {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.7px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-secondary);
   display: block;
@@ -527,6 +527,110 @@
 
 .textarea::placeholder {
   color: var(--text-muted);
+}
+
+/* ── Msg card header (label + camera btn) ────────────────────────────────── */
+.msg-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.msg-label-row .field-label {
+  margin-bottom: 0;
+}
+
+.camera-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: #C4967C;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.camera-btn:hover,
+.camera-btn.active {
+  background: #FDF6F0;
+}
+
+/* ── Screenshot upload zone ───────────────────────────────────────────────── */
+.screenshot-zone {
+  margin-bottom: 10px;
+}
+
+.screenshot-upload-area {
+  background: #F9F6F2;
+  border: 1.5px dashed #C4967C;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #C4967C;
+  transition: background 0.15s ease;
+}
+
+.screenshot-upload-area:hover {
+  background: #F5EDE4;
+}
+
+.screenshot-upload-area span {
+  font-size: 12px;
+  color: #8A8A8A;
+}
+
+.screenshot-preview {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+}
+
+.screenshot-preview img {
+  max-height: 80px;
+  border-radius: 8px;
+  border: 1.5px solid #C4967C;
+  display: block;
+}
+
+.screenshot-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #1A1A1A;
+  color: white;
+  border: none;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease;
+}
+
+.screenshot-remove:hover {
+  background: var(--accent);
+}
+
+.screenshot-hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #8A8A8A;
+  line-height: 1.4;
 }
 
 /* ── Style chips ─────────────────────────────────────────────────────────── */

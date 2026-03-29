@@ -4,7 +4,7 @@
 
 :root {
   /* backgrounds */
-  --bg:          #F5F0EB;
+  --bg:          #FFFFFF;
   --surface:     #FFFFFF;
   --card:        #FFFFFF;
   --input-bg:    #F9F6F2;
@@ -34,7 +34,7 @@
   --radius-lg: 14px;
 
   /* font */
-  --font-sans: 'Inter', 'PingFang SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'DM Sans', 'PingFang SC', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 html, body {
