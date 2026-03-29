@@ -920,6 +920,25 @@
   line-height: 1.45;
 }
 
+/* Regenerate button — inside bubble, bottom */
+.bubble-regen-btn {
+  display: block;
+  margin-top: 6px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.5;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  letter-spacing: 0.02em;
+}
+
+.bubble-regen-btn:hover {
+  opacity: 1;
+}
+
 /* Copy icon — appears on hover */
 .bubble-copy-icon {
   position: absolute;

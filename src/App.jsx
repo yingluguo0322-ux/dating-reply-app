@@ -84,35 +84,35 @@ const t = {
 // ── Mock pools ────────────────────────────────────────────────────────────────
 const replyPool = {
   zh: {
-    playful:  ['哈哈你这个问题太可爱了！说说你是怎么想到这个的？','哇你也喜欢这个吗？！感觉咱俩是同一频道的人，要不要继续聊聊？','这个问题问得好！我的答案有点出乎意料，你猜猜看？'],
-    flirty:   ['你这是在故意撩我吗？因为效果相当不错。','嗯…想了好久，不过想到的都是和你有关的答案。','好吧你赢了，我承认我有点期待你的下一条消息。'],
-    witty:    ['有趣的问题！我的第一反应是……说出来你可能要笑。不过笑了也好，笑起来好看。','结论是：答案取决于你接下来说什么。','正确答案有三种，但最有意思的那种需要你来配合。'],
-    charming: ['你好像特别擅长问到点子上，这让我想多了解你一点。','说真的，不是每个人都能让我这么快就想继续聊下去的。','我喜欢你这个问题，简单但有深度——就像你给我的感觉。'],
-    sincere:  ['我认真想了想，其实我更想先听听你的看法？','谢谢你问这个，说明你在认真了解我。我也想更了解你。','这让我想起了一件小事……不知道你有没有过类似的感受？'],
+    playful:  ['哈哈这个我没想到，但说实话……完全能共鸣 😭', '等等我还没准备好接收这个信息 😭', '今天看到的最离谱的一条消息，但我喜欢 😭'],
+    flirty:   ['你就这么说了，还指望我能正常回复吗', '好吧这感觉像是在针对我，但我不介意', '我本来挺淡定的，看完这条消息之后就不了'],
+    witty:    ['你以为我能不想二十分钟就回出来？太大胆了', '我已经盯着这句话三分钟了，还在处理中', '我的大脑：正常回复。也是我的大脑：绝对不行'],
+    charming: ['这是我最近听到的最好的话之一，是认真的', '这条消息让我今天好过了一点点', '我不是随便说这句话的——这真的很暖'],
+    sincere:  ['谢谢你说这个，比你想象的更重要', '这对我真的意义很大，谢谢你', '很高兴你告诉我——真心的'],
   },
   en: {
-    playful:  ["Haha I literally laughed out loud. How did you even come up with that?","Wait, you're into that too?! I feel like we're on the same wavelength — wanna keep going?","Great question! My answer might surprise you… want to guess first?"],
-    flirty:   ["Are you intentionally trying to get my attention? Because it's working.","I thought about this for a while and somehow all my answers kept coming back to you.","Okay fine — I'll admit I'm looking forward to what you say next."],
-    witty:    ["Interesting! My first thought was… okay this might make you laugh. But hey, laughing looks good on you.","I analyzed this. Conclusion: the answer depends entirely on what you say next.","Logically three possible answers. The most interesting one requires your participation."],
-    charming: ["You have this way of asking exactly the right things — makes me want to know more about you.","Honestly, not many people can get me this engaged this quickly.","I love that question — simple but deep. Kind of like the vibe I get from you."],
-    sincere:  ["I genuinely thought about this… but I'd love to hear your take first?","Thanks for asking — it shows you're paying real attention. I want to know you better too.","That actually reminded me of something… have you ever felt the same way?"],
+    playful:  ["Okay I was NOT expecting that but honestly... same energy 😭", "Wait I'm sorry, I was NOT ready for this 😭", "This is the most chaotic thing I've read today and I'm here for it 😭"],
+    flirty:   ["You can't just say that and expect me to act normal about it", "Okay but why does this feel like a personal attack", "I was doing fine until I read this, thanks for that"],
+    witty:    ["Bold of you to assume I know how to respond to this without overthinking it for 20 minutes", "I've been staring at this for 3 minutes. Still processing.", "My brain: normal response. Also my brain: absolutely not."],
+    charming: ["That's genuinely one of the nicest things anyone's said to me in a while", "Okay this actually made my day a little bit", "I don't say this lightly but that was really sweet"],
+    sincere:  ["I really appreciate you saying that — means more than you know", "That genuinely means a lot to me, thank you", "I'm glad you told me that — honestly"],
   },
 }
 
 const rewritePool = {
   zh: {
-    playful:  ['这也是我啊！感觉找到同类了，笑死。你最近在……？','说到这个我就来劲了——你最喜欢哪种？！快说！','哈！！这个我太有共鸣了。你还喜欢什么？'],
-    flirty:   ['嗯……这种事要两个人一起才更有意思，你说呢？','感觉你挺好约的？不是，我是说挺好聊的。','有些事一个人做总差点意思……你懂我意思吗？'],
-    witty:    ['哦有意思，看来你是个有品位的人。品位好的人通常还有一个共同点，你知道是什么吗？','真正喜欢这个的人，通常隐藏着很有意思的故事。你呢？','你这句话让我想到了一个问题：如果只能留一个，你会怎么选？'],
-    charming: ['这让我们有了第一个共同点。我猜不会是最后一个。','发现一个共同的东西，然后突然觉得对方更立体了。','你说这个的时候，我感觉我们之间多了一条细细的线。'],
-    sincere:  ['真的吗，我也是！有时候就是这种小小的共同点让人感觉特别踏实。','听到你说这个，我莫名松了口气——感觉你是个很真实的人。','喜欢同一件事的两个人，聊起来都会很自然。'],
+    playful:  ['这也是我啊！感觉找到同类了 😭 你最近在……？', '等等不会吧！！你也是？快告诉我更多', '哈这个共鸣来得太猛了，你还喜欢什么？'],
+    flirty:   ['有些事两个人一起才更有意思，你说呢？', '怎么感觉你这句话是专门说给我听的', '这种事一个人总差点意思……你懂我的'],
+    witty:    ['敢直接写出来——我尊重', '我研究了一下，答案比你预想的有趣得多', '必须追问——感觉这背后有个完整的故事'],
+    charming: ['这是我们的第一个共同点，我猜不会是最后一个', '发现一个小小的交集，对方突然就更立体了', '这种简单的真心话其实说了很多'],
+    sincere:  ['真的吗我也是——小小的共同点让人感觉很踏实', '这句话让我笑了，谢谢你说出来', '最自然的对话就是这样开始的'],
   },
   en: {
-    playful:  ["Same!! I feel like we might be the same person, this is suspicious.","Okay now I need to know everything — what's your favorite kind?!","No way, me too! What else are you into?"],
-    flirty:   ["Mmm… some things are just better with the right company, don't you think?","So what you're saying is you're easy to make plans with? I mean — easy to talk to.","There's a version of this that's way more fun with two people involved."],
-    witty:    ["Interesting. People who like that tend to have one surprisingly good story. What's yours?","I've done research on this. People who say that usually mean something else entirely.","Follow-up question — I feel like there's a whole personality behind that statement."],
-    charming: ["That's our first thing in common. Something tells me it won't be the last.","There's something really nice about finding a small overlap — suddenly the other person feels more real.","Simple things said genuinely say a lot."],
-    sincere:  ["Really? Me too — funny how something small can make someone feel more familiar.","That actually made me smile. I feel like you're a pretty genuine person.","The easiest conversations always start like this — one honest little thing in common."],
+    playful:  ["Same!! I feel like we might be the same person, this is suspicious 😭", "No way, me too! What else are you into??", "Okay now I need to know everything about this"],
+    flirty:   ["Some things are just better with the right company, don't you think?", "Is it weird that this made me want to hear your voice saying it?", "There's a version of this that's way more fun with two people"],
+    witty:    ["Bold of you to put this in writing — I respect it", "I've thought about this. The answer is more interesting than you'd expect.", "Follow-up question incoming — I feel like there's a whole story here"],
+    charming: ["That's our first thing in common. Something tells me it won't be the last.", "There's something really nice about finding a small overlap like this", "Simple things said genuinely say a lot — and this did"],
+    sincere:  ["Really? Me too — funny how something small can make someone feel more familiar", "That actually made me smile. Thank you for saying it.", "The easiest conversations always start like this"],
   },
 }
 
@@ -301,7 +301,7 @@ function CollapsibleBgCard({ label, hint, placeholder, value, onChange, expanded
 }
 
 // ── AiBubble ──────────────────────────────────────────────────────────────────
-function AiBubble({ card, styleLabel, isSelected, onSelect, onCopy, animDelay }) {
+function AiBubble({ card, styleLabel, isSelected, onSelect, onCopy, onRegenerate, animDelay }) {
   const [justCopied, setJustCopied] = useState(false)
   const c = STYLE_COLORS[card.style]
 
@@ -312,6 +312,11 @@ function AiBubble({ card, styleLabel, isSelected, onSelect, onCopy, animDelay })
       onCopy(card.text)
       setTimeout(() => setJustCopied(false), 1800)
     })
+  }
+
+  function handleRegenerate(e) {
+    e.stopPropagation()
+    onRegenerate()
   }
 
   return (
@@ -327,6 +332,13 @@ function AiBubble({ card, styleLabel, isSelected, onSelect, onCopy, animDelay })
       >
         <span className="bubble-style-label" style={{ color: c.text }}>{styleLabel}</span>
         <p className="bubble-ai-text">{card.text}</p>
+        <button
+          className="bubble-regen-btn"
+          onClick={handleRegenerate}
+          style={{ color: c.text }}
+        >
+          ↺ Regenerate
+        </button>
       </div>
       <button
         className="bubble-copy-icon"
@@ -346,7 +358,7 @@ function PhonePreview({
   replyMsg, replyResults, replyLoading,
   rwText, rwResults, rwLoading,
   activeProfile, lang, i18n,
-  onCopied,
+  onCopied, onRegenerate,
 }) {
   const [replySelectedId, setReplySelectedId] = useState(null)
   const [rwSelectedId,    setRwSelectedId]    = useState(null)
@@ -437,6 +449,7 @@ function PhonePreview({
                     isSelected={selectedId === card.id}
                     onSelect={() => handleSelectCard(card.id)}
                     onCopy={onCopied ?? (() => {})}
+                    onRegenerate={() => onRegenerate?.(card.id, card.style)}
                     animDelay={idx * 100}
                   />
                 ))}
@@ -548,6 +561,17 @@ export default function App() {
     ))
   }, [activeProfileId, mode, replyMsg, rwText])
 
+  const handleRegenerate = useCallback((cardId, style) => {
+    const pool = mode === 'reply' ? replyPool[lang][style] : rewritePool[lang][style]
+    const setter = mode === 'reply' ? setReplyResults : setRwResults
+    setter(prev => prev.map(card => {
+      if (card.id !== cardId) return card
+      const others = pool.filter(t => t !== card.text)
+      const next = others.length ? others[Math.floor(Math.random() * others.length)] : pool[Math.floor(Math.random() * pool.length)]
+      return { ...card, text: next }
+    }))
+  }, [mode, lang])
+
   const toggleReplyStyle = useCallback((key) => {
     setReplyStyles(prev => prev.includes(key) ? prev.filter(s => s !== key) : prev.length >= MAX_STYLES ? prev : [...prev, key])
     setReplyError('')
@@ -564,7 +588,7 @@ export default function App() {
     setReplyError(''); setReplyLoading(true); setReplyResults([])
     // eslint-disable-next-line no-unused-vars
     const _ctx = buildContext(activeHistory, i)
-    setTimeout(() => { setReplyResults(getMockCards(replyStyles, lang, replyPool)); setReplyLoading(false) }, 900)
+    setTimeout(() => { setReplyResults(getMockCards(replyStyles, lang, replyPool)); setReplyLoading(false) }, 1500)
   }, [replyMsg, replyStyles, lang, i, activeHistory])
 
   const handleRwGenerate = useCallback(() => {
@@ -573,7 +597,7 @@ export default function App() {
     setRwError(''); setRwLoading(true); setRwResults([])
     // eslint-disable-next-line no-unused-vars
     const _ctx = buildContext(activeHistory, i)
-    setTimeout(() => { setRwResults(getMockCards(rwStyles, lang, rewritePool)); setRwLoading(false) }, 900)
+    setTimeout(() => { setRwResults(getMockCards(rwStyles, lang, rewritePool)); setRwLoading(false) }, 1500)
   }, [rwText, rwStyles, lang, i, activeHistory])
 
   return (
@@ -696,6 +720,7 @@ export default function App() {
                 lang={lang}
                 i18n={i}
                 onCopied={handleCopied}
+                onRegenerate={handleRegenerate}
               />
             </div>
           </div>
