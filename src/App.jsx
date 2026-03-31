@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import './App.css'
+import LandingPage from './components/LandingPage'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'flame_profiles'
@@ -642,6 +643,7 @@ function PhonePreview({
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
+  const [onboarded, setOnboarded] = useState(() => localStorage.getItem('jmt_onboarded') === 'true')
   const [lang, setLang] = useState('zh')
   const [mode, setMode] = useState('reply')
 
@@ -772,6 +774,15 @@ export default function App() {
     const _ctx = buildContext(activeHistory, i)
     setTimeout(() => { setRwResults(getMockCards(rwStyles, lang, replyPool)); setRwLoading(false) }, 1500)
   }, [rwText, rwStyles, lang, i, activeHistory])
+
+  if (!onboarded) {
+    return (
+      <LandingPage onNext={() => {
+        localStorage.setItem('jmt_onboarded', 'true')
+        setOnboarded(true)
+      }} />
+    )
+  }
 
   return (
     <div className="shell">
