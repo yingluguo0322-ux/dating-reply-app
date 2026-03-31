@@ -320,7 +320,10 @@ function Sidebar({ profiles, activeProfileId, collapsed, open, onToggleCollapse,
                 onPointerLeave={cancelLongPress}
                 onPointerMove={cancelLongPress}
               >
-                <div className={`profile-avatar${isActive ? ' avatar-active' : ''}`}>{p.name[0].toUpperCase()}</div>
+                <div
+                  className={`profile-avatar${isActive ? ' avatar-active' : ''}`}
+                  onClick={e => { e.stopPropagation(); openContextMenu(p.id, e.clientX, e.clientY) }}
+                >{p.name[0].toUpperCase()}</div>
 
                 {!collapsed && (
                   isRenaming ? (
