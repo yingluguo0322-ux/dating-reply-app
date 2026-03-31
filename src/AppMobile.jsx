@@ -1,0 +1,962 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import './AppMobile.css'
+
+const FLAME_KEY = 'flame_profiles'
+
+const STYLE_KEYS = ['playful', 'flirty', 'witty', 'charming', 'sincere']
+const STYLE_LABELS = {
+  playful: 'Playful',
+  flirty: 'Flirty',
+  witty: 'Witty',
+  charming: 'Charming',
+  sincere: 'Sincere',
+}
+
+const STYLE_COLORS = {
+  playful: { macaron: '#F5C97A', chipBorder: '#D4A840', text: '#7A5500', phoneBg: '#FDF3D9' },
+  flirty: { macaron: '#F2A8A8', chipBorder: '#D07878', text: '#8B2020', phoneBg: '#FDEAEA' },
+  witty: { macaron: '#C4B5F4', chipBorder: '#9E88E0', text: '#3D2080', phoneBg: '#F0ECFD' },
+  charming: { macaron: '#A8D5C2', chipBorder: '#78BFAA', text: '#1A5C42', phoneBg: '#E8F7F1' },
+  sincere: { macaron: '#A8C5E8', chipBorder: '#78A8D0', text: '#1A3D6B', phoneBg: '#E8F1FA' },
+}
+
+// Mock replies (fixed)
+const MOCK_REPLY = {
+  playful: 'Okay I was NOT expecting that but honestly... same energy 😭',
+  flirty: "You can't just say that and expect me to act normal about it",
+  witty: 'Bold of you to assume I know how to respond without overthinking it for 20 minutes',
+  charming: "That's genuinely one of the nicest things anyone's said to me in a while",
+  sincere: 'I really appreciate you saying that — means more than you know',
+}
+
+const MOCK_PROFILES = [
+  {
+    id: 'alex',
+    name: 'Alex',
+    history: [
+      { time: '2026-03-20T14:23:00Z', theirMsg: '你最近在忙什么呀', myReply: '哈哈最近在学做饭！你呢？' },
+      { time: '2026-03-22T19:45:00Z', theirMsg: '周末有空吗', myReply: '周末刚好有空，你有什么计划？' },
+    ],
+  },
+  {
+    id: 'mia',
+    name: 'Mia',
+    history: [
+      { time: '2026-03-21T11:10:00Z', theirMsg: '你喜欢什么类型的电影', myReply: '文艺片和悬疑片都喜欢，你呢？' },
+      { time: '2026-03-23T20:30:00Z', theirMsg: '推荐一首歌给我', myReply: '推荐《Something Just Like This》！你呢？' },
+    ],
+  },
+]
+
+function loadProfiles() {
+  try {
+    const raw = localStorage.getItem(FLAME_KEY)
+    return raw ? JSON.parse(raw) : MOCK_PROFILES
+  } catch {
+    return MOCK_PROFILES
+  }
+}
+
+function TLogoButton({ onClick }) {
+  return (
+    <button className="m-t-btn" onClick={onClick} aria-label="Open Flame Files">
+      <span className="m-t-letter">T</span>
+    </button>
+  )
+}
+
+function SliderIcon3Lines() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="3.2" cy="3.2" r="1.4" fill="#8A8A8A" />
+      <rect x="5.1" y="2.2" width="7" height="2" rx="1" fill="#8A8A8A" />
+      <circle cx="3.2" cy="7" r="1.4" fill="#8A8A8A" />
+      <rect x="5.1" y="6" width="7" height="2" rx="1" fill="#8A8A8A" />
+      <circle cx="3.2" cy="10.8" r="1.4" fill="#8A8A8A" />
+      <rect x="5.1" y="9.8" width="7" height="2" rx="1" fill="#8A8A8A" />
+    </svg>
+  )
+}
+
+function CameraIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  )
+}
+
+function PencilIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C4967C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
+  )
+}
+
+function PencilIconMuted() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#B0A89E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
+  )
+}
+
+function ImageIconSmall() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="3" />
+      <path d="M8 13l2-2 4 4 2-2 3 3" />
+      <circle cx="9" cy="10" r="1" />
+    </svg>
+  )
+}
+
+function TextIconSmall() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h10" />
+    </svg>
+  )
+}
+
+function CopyIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2D9C7A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+}
+
+function AiBubble({ styleKey, text, color, animDelayMs, onCopy }) {
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!copied) return
+    const t = setTimeout(() => setCopied(false), 1500)
+    return () => clearTimeout(t)
+  }, [copied])
+
+  return (
+    <div
+      className="m-ai-bubble"
+      style={{
+        background: color.macaron,
+        color: color.text,
+        animationDelay: `${animDelayMs}ms`,
+      }}
+    >
+      <div className="m-ai-bubble-label">{STYLE_LABELS[styleKey].toUpperCase()}</div>
+      <p className="m-ai-bubble-text">{text}</p>
+      <button
+        className="m-ai-bubble-copy"
+        onClick={(e) => {
+          e.stopPropagation()
+          navigator.clipboard.writeText(text).then(() => {
+            setCopied(true)
+            onCopy?.(text)
+          })
+        }}
+        aria-label="Copy reply"
+      >
+        {copied ? <CheckIcon /> : <CopyIcon />}
+      </button>
+    </div>
+  )
+}
+
+function FlameDrawer({ open, profiles, activeProfileId, onSelectProfile, onClose, onAddProfile, onDeleteProfile }) {
+  const [adding, setAdding] = useState(false)
+  const [name, setName] = useState('')
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (!adding) return
+    inputRef.current?.focus()
+  }, [adding])
+
+  const commitAdd = () => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    onAddProfile(trimmed)
+    setName('')
+    setAdding(false)
+  }
+
+  if (!open) return null
+
+  return (
+    <>
+      <div className="m-flame-overlay" onClick={onClose} />
+      <div className="m-flame-drawer" role="dialog" aria-modal="true">
+        <div className="m-drawer-head">
+          <div className="m-drawer-title">🔥 Flames</div>
+          <button className="m-drawer-close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </div>
+
+        {!adding ? (
+          <div className="m-drawer-add-row">
+            <button className="m-drawer-add-btn" onClick={() => setAdding(true)}>
+              + New flame
+            </button>
+          </div>
+        ) : (
+          <div className="m-drawer-add-row">
+            <input
+              ref={inputRef}
+              className="m-drawer-add-input"
+              placeholder="Enter name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitAdd()
+                if (e.key === 'Escape') {
+                  setAdding(false)
+                  setName('')
+                }
+              }}
+              onBlur={() => {
+                // Keep "inline input + commit on Enter"; blur cancels.
+                setAdding(false)
+                setName('')
+              }}
+            />
+          </div>
+        )}
+
+        <div className="m-flame-list">
+          <div
+            className={`m-no-profile ${activeProfileId === null ? 'selected' : ''}`}
+            onClick={() => onSelectProfile(null)}
+          >
+            ✦ No profile
+          </div>
+          {profiles.map((p) => {
+            const selected = p.id === activeProfileId
+            const initial = (p.name?.[0] ?? '✦').toUpperCase()
+            return (
+              <div
+                key={p.id}
+                className={`m-flame-item ${selected ? 'selected' : ''}`}
+                onClick={() => onSelectProfile(p.id)}
+              >
+                <div className="m-flame-avatar">{initial}</div>
+                <div className="m-flame-name">{p.name}</div>
+                <div
+                  className="m-flame-delete"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeleteProfile(p.id)
+                  }}
+                  aria-label="Delete profile"
+                >
+                  ×
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </>
+  )
+}
+
+function StageBottomSheet({ open, draft, onChange, onApply, onClose }) {
+  const options = [
+    'Just matched',
+    'Chatting a few days',
+    'Gone on 1 date',
+    'Gone on 2–3 dates',
+    'Dating regularly',
+  ]
+
+  if (!open) return null
+
+  return (
+    <>
+      <div className="m-overlay" onClick={onClose} />
+      <div className="m-sheet">
+        <div className="m-sheet-drag" />
+        <div className="m-sheet-title">Stage</div>
+        <div className="m-sheet-subtitle">Where are you two right now?</div>
+        <div className="m-sheet-body">
+          {options.map((label, idx) => {
+            const value = idx + 1
+            const selected = draft === value
+            return (
+              <div
+                key={value}
+                className={`m-radio-card ${selected ? 'selected' : ''}`}
+                onClick={() => onChange(value)}
+                role="button"
+              >
+                <span>{label}</span>
+                <span className="m-radio-dot" />
+              </div>
+            )
+          })}
+          <button className="m-apply-btn" onClick={onApply}>
+            Apply
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function InterestBottomSheet({ open, draft, onChange, onApply, onClose }) {
+  const desc = {
+    1: 'Still observing',
+    2: 'Curious',
+    3: 'Interested',
+    4: 'Really into it',
+    5: 'Catching feelings',
+  }
+  if (!open) return null
+
+  const fillPct = ((draft - 1) / 4) * 100
+
+  return (
+    <>
+      <div className="m-overlay" onClick={onClose} />
+      <div className="m-sheet">
+        <div className="m-sheet-drag" />
+        <div className="m-sheet-title">Interest level</div>
+        <div className="m-sheet-subtitle">How much are you feeling this person?</div>
+        <div className="m-sheet-body">
+          <div className="m-interest-desc">{draft} → {desc[draft]}</div>
+
+          <div className="m-track-row">
+            <div className="m-track">
+              <div className="m-track-fill" style={{ width: `${fillPct}%` }} />
+            </div>
+            <div className="m-dots-row">
+              {Array.from({ length: 5 }).map((_, idx) => {
+                const value = idx + 1
+                const selected = value === draft
+                return (
+                  <div key={value} className="m-dot-wrap" onClick={() => onChange(value)} role="button">
+                    <div className={`m-dot ${selected ? 'selected' : ''}`} />
+                    <div className="m-dot-num">{value}</div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="m-interest-ends">
+              <span>Still figuring out</span>
+              <span>Really into it</span>
+            </div>
+          </div>
+
+          <button className="m-apply-btn" onClick={onApply}>
+            Apply
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+export default function AppMobile() {
+  const [phase, setPhase] = useState('input') // input | results
+
+  const [profiles, setProfiles] = useState(() => loadProfiles())
+  const [activeProfileId, setActiveProfileId] = useState(null)
+
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  // Context chips (Stage / Interest)
+  const [stageApplied, setStageApplied] = useState(false)
+  const [stageLevel, setStageLevel] = useState(1)
+  const [stageDraft, setStageDraft] = useState(1)
+
+  const [interestApplied, setInterestApplied] = useState(false)
+  const [interestLevel, setInterestLevel] = useState(3)
+  const [interestDraft, setInterestDraft] = useState(3)
+
+  const [sheet, setSheet] = useState(null) // 'stage' | 'interest' | null
+
+  // Input
+  const [replyMsg, setReplyMsg] = useState('')
+  const [myIdea, setMyIdea] = useState('')
+  const [replyStyles, setReplyStyles] = useState(['playful']) // initial: at least 1
+  const [replyLoading, setReplyLoading] = useState(false)
+
+  const [screenshotOpen, setScreenshotOpen] = useState(false)
+  const [screenshotPreview, setScreenshotPreview] = useState(null)
+  const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
+    }
+  }, [screenshotPreview])
+
+  const handleScreenshotFile = useCallback((file) => {
+    if (!file) return
+    const nextUrl = URL.createObjectURL(file)
+    setScreenshotPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return nextUrl
+    })
+    setScreenshotOpen(false)
+  }, [])
+
+  const activeText = replyMsg
+  const activeStyles = replyStyles
+  const activeLoading = replyLoading
+  const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? null
+
+  const canGenerate = activeText.trim().length > 0 && activeStyles.length > 0 && activeStyles.length <= 3
+
+  const genTimeoutRef = useRef(null)
+  useEffect(() => {
+    return () => {
+      if (genTimeoutRef.current) clearTimeout(genTimeoutRef.current)
+    }
+  }, [])
+
+  const onToggleStyle = useCallback(
+    (styleKey) => {
+      const current = new Set(replyStyles)
+      const isSelected = current.has(styleKey)
+
+      if (isSelected) {
+        // Keep at least 1 selected.
+        if (current.size === 1) return
+        current.delete(styleKey)
+      } else {
+        // Up to 3.
+        if (current.size >= 3) return
+        current.add(styleKey)
+      }
+
+      const next = Array.from(current)
+      setReplyStyles(next)
+    },
+    [replyStyles]
+  )
+
+  const startGenerate = useCallback(() => {
+    if (!canGenerate) return
+    setPhase('results')
+
+    if (genTimeoutRef.current) clearTimeout(genTimeoutRef.current)
+
+    setReplyLoading(true)
+
+    genTimeoutRef.current = setTimeout(() => {
+      setReplyLoading(false)
+    }, 1500)
+  }, [canGenerate])
+
+  const [isEditingTextBubble, setIsEditingTextBubble] = useState(false)
+  const [draftReplyMsg, setDraftReplyMsg] = useState('')
+  const [isScreenshotMenuOpen, setIsScreenshotMenuOpen] = useState(false)
+
+  const triggerGenerate = useCallback(
+    (textForValidation) => {
+      const ok = textForValidation.trim().length > 0 && replyStyles.length > 0 && replyStyles.length <= 3
+      if (!ok) return
+      setPhase('results')
+      if (genTimeoutRef.current) clearTimeout(genTimeoutRef.current)
+      setReplyLoading(true)
+      genTimeoutRef.current = setTimeout(() => setReplyLoading(false), 1500)
+    },
+    [replyStyles]
+  )
+
+  const handleTextBubbleDone = useCallback(() => {
+    const next = draftReplyMsg
+    setIsEditingTextBubble(false)
+    setDraftReplyMsg('')
+    setReplyMsg(next)
+    triggerGenerate(next)
+  }, [draftReplyMsg, triggerGenerate])
+
+  const handleTextBubbleCancel = useCallback(() => {
+    setIsEditingTextBubble(false)
+    setDraftReplyMsg('')
+  }, [])
+
+  const openTextEdit = useCallback(() => {
+    setIsScreenshotMenuOpen(false)
+    setDraftReplyMsg(replyMsg)
+    setIsEditingTextBubble(true)
+  }, [replyMsg])
+
+  // Keep bubbles in sync with selected styles during results state.
+  const displayBubbles = useMemo(() => {
+    const styleTextMap = MOCK_REPLY
+    return STYLE_KEYS.filter((k) => activeStyles.includes(k)).map((styleKey) => ({
+      styleKey,
+      text: styleTextMap[styleKey],
+    }))
+  }, [activeStyles])
+
+  const onCopied = useCallback((cardText) => {
+    // Keep a light "history" persistence similar to the original app.
+    if (activeProfileId === null) return
+    const entry = { time: new Date().toISOString(), theirMsg: replyMsg.trim(), myReply: cardText }
+    setProfiles((prev) =>
+      prev.map((p) => (p.id === activeProfileId ? { ...p, history: [...p.history, entry] } : p))
+    )
+  }, [activeProfileId, replyMsg])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(FLAME_KEY, JSON.stringify(profiles))
+    } catch {
+      // Best-effort persistence; ignore storage errors.
+    }
+  }, [profiles])
+
+  const addProfile = useCallback((name) => {
+    const id = `p-${Date.now()}`
+    setProfiles((prev) => [...prev, { id, name, history: [] }])
+    setActiveProfileId(id)
+  }, [])
+
+  const deleteProfile = useCallback((id) => {
+    setProfiles((prev) => prev.filter((p) => p.id !== id))
+    setActiveProfileId((prev) => (prev === id ? null : prev))
+  }, [])
+
+  const selectedStageChip = stageApplied
+  const stageChipLabel = selectedStageChip ? 'Stage ▾' : 'Stage ▾'
+  const interestChipLabel = interestApplied ? `Interest ${interestLevel}/5 ▾` : 'Interest ▾'
+
+  const headerStageChip = (
+    <button
+      className={`m-chip m-chip-btn ${stageApplied ? 'selected' : ''}`}
+      onClick={() => {
+        setStageDraft(stageLevel)
+        setSheet('stage')
+      }}
+    >
+      {stageChipLabel}
+    </button>
+  )
+
+  const headerInterestChip = (
+    <button
+      className={`m-chip m-chip-btn ${interestApplied ? 'selected' : ''}`}
+      onClick={() => {
+        setInterestDraft(interestLevel)
+        setSheet('interest')
+      }}
+    >
+      {interestChipLabel}
+    </button>
+  )
+
+  return (
+    <div className="mobile-shell">
+      <div className="mobile-scroll">
+        <div className="m-header">
+          <TLogoButton
+            onClick={() => {
+              setDrawerOpen(true)
+            }}
+          />
+          {phase === 'results' ? (
+            activeProfile ? (
+              <div
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontWeight: 700,
+                  fontSize: 18,
+                  color: '#1A1A1A',
+                }}
+              >
+                {activeProfile.name}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  margin: 0,
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontWeight: 500,
+                  fontSize: 15,
+                  color: '#C4967C',
+                  cursor: 'pointer',
+                }}
+              >
+                Add a name →
+              </button>
+            )
+          ) : (
+            <div className="m-brand">
+              TYPE<span className="m-brand-dot">.</span>
+            </div>
+          )}
+          <div className="m-header-right-placeholder" />
+          <div className="m-header-divider" />
+        </div>
+
+        {phase === 'input' && (
+          <div className="m-context-bar">
+            <div className="m-context-left">
+              <SliderIcon3Lines />
+              <span>Context</span>
+            </div>
+            <div className="m-context-chips">
+              {headerStageChip}
+              {headerInterestChip}
+            </div>
+          </div>
+        )}
+
+        {/* results summary bar removed per spec */}
+
+        {phase === 'input' ? (
+          <div className="m-content">
+            <div className="m-card">
+              <div className="m-card-title-row">
+                <div className="m-card-title">HIS / HER MESSAGE</div>
+                <button
+                  className="m-icon-btn"
+                  onClick={() => {
+                    setScreenshotOpen((v) => !v)
+                  }}
+                  aria-label="Upload screenshot"
+                  title="Upload screenshot"
+                >
+                  <CameraIcon />
+                </button>
+              </div>
+              {screenshotPreview ? (
+                <div className="m-message-with-thumb">
+                  <textarea
+                    className="m-textarea m-textarea-with-thumb"
+                    placeholder="Paste what they sent you..."
+                    value={replyMsg}
+                    onChange={(e) => setReplyMsg(e.target.value)}
+                  />
+                  <div className="m-upload-thumb-side">
+                    <img className="m-upload-thumb-small" src={screenshotPreview} alt="screenshot preview" />
+                    <button
+                      className="m-upload-remove-overlay m-upload-remove-small"
+                      onClick={() => {
+                        URL.revokeObjectURL(screenshotPreview)
+                        setScreenshotPreview(null)
+                        if (fileInputRef.current) fileInputRef.current.value = ''
+                      }}
+                      aria-label="Remove screenshot"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <textarea
+                  className="m-textarea"
+                  placeholder="Paste what they sent you..."
+                  value={replyMsg}
+                  onChange={(e) => setReplyMsg(e.target.value)}
+                />
+              )}
+
+              {!screenshotPreview && screenshotOpen && (
+                <div style={{ marginTop: 12 }}>
+                  <div
+                    className="m-upload"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <CameraIcon />
+                    <div className="m-upload-label">Upload a screenshot</div>
+                  </div>
+                  <div className="m-upload-hint">AI will read the chat and fill in the message for you</div>
+                </div>
+              )}
+            </div>
+
+            <div className="m-card m-idea-card">
+              <div className="m-card-title-row">
+                <div className="m-card-title">WHAT I WANT TO SAY</div>
+                <div className="m-card-optional">optional</div>
+              </div>
+              <textarea
+                className="m-textarea m-idea-textarea"
+                placeholder="e.g. I also like hiking, tell me more about yours?"
+                value={myIdea}
+                onChange={(e) => setMyIdea(e.target.value)}
+              />
+              <div className="m-idea-hint">Leave blank — AI will craft something from scratch</div>
+            </div>
+
+            <div className="m-card">
+              <div className="m-card-title-row">
+                <div className="m-card-title">STYLE — Up to 3</div>
+                <div style={{ width: 28 }} />
+              </div>
+
+              <div className="m-style-chips-grid">
+                {STYLE_KEYS.map((k) => {
+                  const selected = activeStyles.includes(k)
+                  const c = STYLE_COLORS[k]
+                  return (
+                    <button
+                      key={k}
+                      className={`m-style-chip ${selected ? 'selected' : ''}`}
+                      onClick={() => onToggleStyle(k)}
+                      disabled={!selected && replyStyles.length >= 3}
+                      style={{
+                        background: selected ? c.macaron : c.phoneBg,
+                        color: c.text,
+                        borderColor: selected ? c.chipBorder : 'transparent',
+                        opacity: selected ? 1 : 0.45,
+                      }}
+                    >
+                      {STYLE_LABELS[k]}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <button
+              className="m-generate-btn"
+              disabled={!canGenerate || activeLoading}
+              onClick={startGenerate}
+            >
+              {activeLoading ? 'Generating...' : 'Generate'}
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="m-results-scroll">
+              {/* Left message bubble (text or screenshot) */}
+              {screenshotPreview ? (
+                <div className="m-screenshot-bubble-wrap">
+                  <div className="m-screenshot-bubble">
+                    <img
+                      className="m-screenshot-img"
+                      src={screenshotPreview}
+                      alt="uploaded screenshot"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="m-screenshot-pencil-btn"
+                    onClick={() => {
+                      setIsScreenshotMenuOpen((v) => !v)
+                      setIsEditingTextBubble(false)
+                    }}
+                    aria-label="Edit screenshot options"
+                  >
+                    <PencilIconMuted />
+                  </button>
+
+                  {isScreenshotMenuOpen && (
+                    <>
+                      <div
+                        className="m-menu-overlay"
+                        onClick={() => setIsScreenshotMenuOpen(false)}
+                      />
+                      <div className="m-screenshot-menu" onClick={(e) => e.stopPropagation()}>
+                        <div
+                          className="m-screenshot-menu-item"
+                          onClick={() => {
+                            setIsScreenshotMenuOpen(false)
+                            fileInputRef.current?.click()
+                          }}
+                          role="button"
+                          tabIndex={0}
+                        >
+                          <ImageIconSmall />
+                          <span>Re-upload screenshot</span>
+                        </div>
+                        <div
+                          className="m-screenshot-menu-item m-screenshot-menu-item-last"
+                          onClick={() => {
+                            setIsScreenshotMenuOpen(false)
+                            if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
+                            setScreenshotPreview(null)
+                            setReplyMsg('')
+                            setDraftReplyMsg('')
+                            setIsEditingTextBubble(true)
+                          }}
+                          role="button"
+                          tabIndex={0}
+                        >
+                          <TextIconSmall />
+                          <span>Switch to text input</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="m-textbubble-row">
+                  {isEditingTextBubble ? (
+                    <div className="m-textbubble-edit-wrap">
+                      <textarea
+                        className="m-textbubble-textarea"
+                        value={draftReplyMsg}
+                        onChange={(e) => setDraftReplyMsg(e.target.value)}
+                      />
+                      <div className="m-edit-actions">
+                        <button
+                          type="button"
+                          className="m-edit-btn cancel"
+                          onClick={handleTextBubbleCancel}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="m-edit-btn done"
+                          onClick={handleTextBubbleDone}
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="m-textbubble-view">{replyMsg.trim() || ' '}</div>
+                      <button
+                        type="button"
+                        className="m-textbubble-pencil-btn"
+                        onClick={openTextEdit}
+                        aria-label="Edit message"
+                      >
+                        <PencilIconMuted />
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* AI suggestions divider */}
+              <div className="m-ai-divider">
+                <div className="m-ai-divider-line" />
+                <div className="m-ai-divider-text">✦ AI suggestions</div>
+                <div className="m-ai-divider-line" />
+              </div>
+
+              {/* Loading / AI bubbles */}
+              {activeLoading ? (
+                <div className="m-typing" aria-label="typing">
+                  <span className="m-typing-dot" />
+                  <span className="m-typing-dot" />
+                  <span className="m-typing-dot" />
+                </div>
+              ) : (
+                <>
+                  {displayBubbles.map((b, idx) => (
+                    <AiBubble
+                      key={b.styleKey}
+                      styleKey={b.styleKey}
+                      text={b.text}
+                      color={STYLE_COLORS[b.styleKey]}
+                      animDelayMs={idx * 100}
+                      onCopy={onCopied}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
+
+            <div className="m-bottom-style-row">
+              <div className="m-bottom-style-grid">
+                {STYLE_KEYS.map((k) => {
+                  const selected = activeStyles.includes(k)
+                  const c = STYLE_COLORS[k]
+                  const disabled = !selected && activeStyles.length >= 3
+                  return (
+                    <button
+                      key={k}
+                      className={`m-style-chip ${selected ? 'selected' : ''}`}
+                      onClick={() => onToggleStyle(k)}
+                      disabled={disabled || activeLoading}
+                      style={{
+                        background: c.macaron,
+                        color: c.text,
+                        borderColor: selected ? c.chipBorder : 'transparent',
+                        opacity: selected ? 1 : 0.4,
+                      }}
+                    >
+                      {STYLE_LABELS[k]}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Hidden file input for screenshot upload (used by input area + results menu) */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          handleScreenshotFile(file)
+          // Allow re-selecting the same file.
+          e.target.value = ''
+        }}
+      />
+
+      <FlameDrawer
+        open={drawerOpen}
+        profiles={profiles}
+        activeProfileId={activeProfileId}
+        onSelectProfile={(id) => setActiveProfileId(id)}
+        onClose={() => setDrawerOpen(false)}
+        onAddProfile={addProfile}
+        onDeleteProfile={deleteProfile}
+      />
+
+      <StageBottomSheet
+        open={sheet === 'stage'}
+        draft={stageDraft}
+        onChange={(v) => setStageDraft(v)}
+        onApply={() => {
+          setStageLevel(stageDraft)
+          setStageApplied(true)
+          setSheet(null)
+        }}
+        onClose={() => setSheet(null)}
+      />
+
+      <InterestBottomSheet
+        open={sheet === 'interest'}
+        draft={interestDraft}
+        onChange={(v) => setInterestDraft(v)}
+        onApply={() => {
+          setInterestLevel(interestDraft)
+          setInterestApplied(true)
+          setSheet(null)
+        }}
+        onClose={() => setSheet(null)}
+      />
+    </div>
+  )
+}
+

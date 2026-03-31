@@ -18,14 +18,14 @@ const STYLE_COLORS = {
 // ── Mock profiles ─────────────────────────────────────────────────────────────
 const MOCK_PROFILES = [
   {
-    id: 'alex', name: 'Alex',
+    id: 'alex', name: 'Alex', starred: false, createdAt: 1742400000000,
     history: [
       { time: '2026-03-20T14:23:00Z', theirMsg: '你最近在忙什么呀', myReply: '哈哈最近在学做饭！你呢？' },
       { time: '2026-03-22T19:45:00Z', theirMsg: '周末有空吗', myReply: '周末刚好有空，你有什么计划？' },
     ],
   },
   {
-    id: 'mia', name: 'Mia',
+    id: 'mia', name: 'Mia', starred: false, createdAt: 1742400001000,
     history: [
       { time: '2026-03-21T11:10:00Z', theirMsg: '你喜欢什么类型的电影', myReply: '文艺片和悬疑片都喜欢，你呢？' },
       { time: '2026-03-23T20:30:00Z', theirMsg: '推荐一首歌给我', myReply: '推荐《Something Just Like This》！你呢？' },
@@ -44,8 +44,8 @@ const t = {
     bgLabel: '背景信息', bgHint: '可选',
     bgPlaceholder: '你们怎么认识的？聊了多久？有什么特别的话题？',
     styleLabel: '回复风格', styleHint: '最多 3 个',
-    generateBtn: '生成回复', generatingBtn: '生成中…',
-    rewriteBtn: '改写', rewritingBtn: '改写中…',
+    generateBtn: '生成回复', generatingBtn: 'Generating...',
+    rewriteBtn: '改写', rewritingBtn: 'Rewriting...',
     errorMsg: '请先粘贴对方的消息', errorMyText: '请先输入你想说的话',
     errorStyle: '请至少选择一种风格',
     sidebarTitle: '🔥 Flames', unboundLabel: '✦ 无绑定模式',
@@ -66,8 +66,8 @@ const t = {
     bgLabel: 'Background', bgHint: 'optional',
     bgPlaceholder: 'How did you meet? How long chatting? Shared interests?',
     styleLabel: 'Style', styleHint: 'Up to 3',
-    generateBtn: 'Generate', generatingBtn: 'Generating…',
-    rewriteBtn: 'Rewrite', rewritingBtn: 'Rewriting…',
+    generateBtn: 'Generate', generatingBtn: 'Generating...',
+    rewriteBtn: 'Rewrite', rewritingBtn: 'Rewriting...',
     errorMsg: 'Please paste their message first', errorMyText: 'Please enter what you want to say',
     errorStyle: 'Please select at least one style',
     sidebarTitle: '🔥 Flames', unboundLabel: '✦ No Profile',
@@ -99,28 +99,18 @@ const replyPool = {
   },
 }
 
-const rewritePool = {
-  zh: {
-    playful:  ['这也是我啊！感觉找到同类了 😭 你最近在……？', '等等不会吧！！你也是？快告诉我更多', '哈这个共鸣来得太猛了，你还喜欢什么？'],
-    flirty:   ['有些事两个人一起才更有意思，你说呢？', '怎么感觉你这句话是专门说给我听的', '这种事一个人总差点意思……你懂我的'],
-    witty:    ['敢直接写出来——我尊重', '我研究了一下，答案比你预想的有趣得多', '必须追问——感觉这背后有个完整的故事'],
-    charming: ['这是我们的第一个共同点，我猜不会是最后一个', '发现一个小小的交集，对方突然就更立体了', '这种简单的真心话其实说了很多'],
-    sincere:  ['真的吗我也是——小小的共同点让人感觉很踏实', '这句话让我笑了，谢谢你说出来', '最自然的对话就是这样开始的'],
-  },
-  en: {
-    playful:  ["Same!! I feel like we might be the same person, this is suspicious 😭", "No way, me too! What else are you into??", "Okay now I need to know everything about this"],
-    flirty:   ["Some things are just better with the right company, don't you think?", "Is it weird that this made me want to hear your voice saying it?", "There's a version of this that's way more fun with two people"],
-    witty:    ["Bold of you to put this in writing — I respect it", "I've thought about this. The answer is more interesting than you'd expect.", "Follow-up question incoming — I feel like there's a whole story here"],
-    charming: ["That's our first thing in common. Something tells me it won't be the last.", "There's something really nice about finding a small overlap like this", "Simple things said genuinely say a lot — and this did"],
-    sincere:  ["Really? Me too — funny how something small can make someone feel more familiar", "That actually made me smile. Thank you for saying it.", "The easiest conversations always start like this"],
-  },
-}
-
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function loadProfiles() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : MOCK_PROFILES
+    if (!raw) return MOCK_PROFILES
+    const parsed = JSON.parse(raw)
+    // Migrate old profiles that lack starred / createdAt fields
+    return parsed.map((p, i) => ({
+      starred: false,
+      createdAt: Date.now() + i,
+      ...p,
+    }))
   } catch { return MOCK_PROFILES }
 }
 
@@ -133,11 +123,11 @@ function buildContext(history, i18n) {
 }
 
 function getMockCards(styles, lang, pool) {
-  const p = pool[lang]
+  const p = pool.en ?? pool[lang] ?? {}
   return styles.map((style, idx) => ({
     id: `${style}-${Date.now()}-${idx}`,
     style,
-    text: p[style][Math.floor(Math.random() * p[style].length)],
+    text: p[style]?.[0] ?? '',
   }))
 }
 
@@ -168,13 +158,72 @@ const CheckIconSm = () => (
   </svg>
 )
 
+const MenuIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <line x1="3" y1="6" x2="21" y2="6"/>
+    <line x1="3" y1="12" x2="21" y2="12"/>
+    <line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+)
+
+const StarIcon = ({ filled }) => (
+  <svg width="15" height="15" viewBox="0 0 24 24"
+    fill={filled ? '#F5A623' : 'none'}
+    stroke={filled ? '#F5A623' : '#1A1A1A'}
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+  >
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+  </svg>
+)
+
+const PencilIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+)
+
+const TrashIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#E53E3E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+  </svg>
+)
+
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-function Sidebar({ profiles, activeProfileId, collapsed, onToggleCollapse, onSelect, onAdd, onDelete, i18n }) {
-  const [addingName, setAddingName] = useState(false)
-  const [newName, setNewName]       = useState('')
-  const inputRef = useRef(null)
+function Sidebar({ profiles, activeProfileId, collapsed, open, onToggleCollapse, onSelect, onAdd, onStar, onRename, onDelete, onClose, i18n }) {
+  const [addingName, setAddingName]   = useState(false)
+  const [newName, setNewName]         = useState('')
+  const [contextMenu, setContextMenu] = useState(null) // { profileId, x, y }
+  const [renamingId, setRenamingId]   = useState(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState(null) // profileId
+  const inputRef      = useRef(null)
+  const renameRef     = useRef(null)
+  const menuRef       = useRef(null)
+  const longPressRef  = useRef(null)
 
   useEffect(() => { if (addingName) inputRef.current?.focus() }, [addingName])
+  useEffect(() => { if (renamingId) renameRef.current?.focus() }, [renamingId])
+
+  // Sort: starred first (preserving add-order within starred), then unstarred by createdAt
+  const sortedProfiles = [...profiles].sort((a, b) => {
+    if (a.starred && !b.starred) return -1
+    if (!a.starred && b.starred) return 1
+    return (a.createdAt || 0) - (b.createdAt || 0)
+  })
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!contextMenu) return
+    function handle(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setContextMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [contextMenu])
 
   function commitAdd() {
     const name = newName.trim()
@@ -182,64 +231,191 @@ function Sidebar({ profiles, activeProfileId, collapsed, onToggleCollapse, onSel
     setNewName(''); setAddingName(false)
   }
 
-  return (
-    <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
-      <div className="sidebar-header">
-        {!collapsed && <span className="sidebar-title">{i18n.sidebarTitle}</span>}
-        <div className="sidebar-header-actions">
-          <button className="sidebar-collapse-btn" onClick={onToggleCollapse} title={collapsed ? 'Expand' : 'Collapse'}>
-            {collapsed ? '›' : '‹'}
-          </button>
-          {!collapsed && (
-            <button className="sidebar-add-btn" onClick={() => setAddingName(true)} title="Add person">
-              <PlusIcon />
-            </button>
-          )}
-        </div>
-      </div>
+  function openContextMenu(profileId, clientX, clientY) {
+    const menuW = 200
+    const menuH = 150
+    let x = clientX
+    let y = clientY
+    if (x + menuW > window.innerWidth - 8)  x = x - menuW
+    if (y + menuH > window.innerHeight - 8) y = y - menuH
+    setContextMenu({ profileId, x, y })
+  }
 
-      {!collapsed && addingName && (
-        <div className="sidebar-add-wrap">
-          <input
-            ref={inputRef}
-            className="sidebar-add-input"
-            placeholder={i18n.newProfilePlaceholder}
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') commitAdd()
-              if (e.key === 'Escape') { setNewName(''); setAddingName(false) }
+  function handlePointerDown(profileId, e) {
+    if (e.button === 2) return // right-click handled by onContextMenu
+    const { clientX, clientY } = e
+    longPressRef.current = setTimeout(() => {
+      openContextMenu(profileId, clientX, clientY)
+    }, 500)
+  }
+
+  function cancelLongPress() {
+    clearTimeout(longPressRef.current)
+  }
+
+  function handleContextMenu(profileId, e) {
+    e.preventDefault()
+    cancelLongPress()
+    openContextMenu(profileId, e.clientX, e.clientY)
+  }
+
+  function commitRename() {
+    const name = renameValue.trim()
+    if (name) onRename(renamingId, name)
+    setRenamingId(null)
+    setRenameValue('')
+  }
+
+  const ctxProfile = contextMenu ? profiles.find(p => p.id === contextMenu.profileId) : null
+
+  return (
+    <>
+      {/* Mobile overlay */}
+      {open && <div className="sidebar-overlay" onClick={onClose} />}
+
+      <aside className={`sidebar${collapsed ? ' collapsed' : ''}${open ? ' mobile-open' : ''}`}>
+        <div className="sidebar-header">
+          {!collapsed && <span className="sidebar-title">{i18n.sidebarTitle}</span>}
+          <div className="sidebar-header-actions">
+            <button className="sidebar-collapse-btn desktop-only" onClick={onToggleCollapse} title={collapsed ? 'Expand' : 'Collapse'}>
+              {collapsed ? '›' : '‹'}
+            </button>
+            {!collapsed && (
+              <button className="sidebar-add-btn" onClick={() => setAddingName(true)} title="Add person">
+                <PlusIcon />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {!collapsed && addingName && (
+          <div className="sidebar-add-wrap">
+            <input
+              ref={inputRef}
+              className="sidebar-add-input"
+              placeholder={i18n.newProfilePlaceholder}
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') commitAdd()
+                if (e.key === 'Escape') { setNewName(''); setAddingName(false) }
+              }}
+              onBlur={commitAdd}
+            />
+          </div>
+        )}
+
+        <div className="profile-list">
+          {sortedProfiles.map(p => {
+            const isActive   = activeProfileId === p.id
+            const isRenaming = renamingId === p.id
+            return (
+              <div
+                key={p.id}
+                className={`profile-item${isActive ? ' active' : ''}`}
+                onClick={() => { if (!isRenaming) { onSelect(p.id); onClose?.() } }}
+                onContextMenu={e => handleContextMenu(p.id, e)}
+                onPointerDown={e => handlePointerDown(p.id, e)}
+                onPointerUp={cancelLongPress}
+                onPointerLeave={cancelLongPress}
+                onPointerMove={cancelLongPress}
+              >
+                <div className={`profile-avatar${isActive ? ' avatar-active' : ''}`}>{p.name[0].toUpperCase()}</div>
+
+                {!collapsed && (
+                  isRenaming ? (
+                    <input
+                      ref={renameRef}
+                      className="profile-rename-input"
+                      value={renameValue}
+                      onChange={e => setRenameValue(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') commitRename()
+                        if (e.key === 'Escape') { setRenamingId(null); setRenameValue('') }
+                      }}
+                      onBlur={commitRename}
+                      onClick={e => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span className="profile-name">
+                      {p.name}
+                      {p.starred && <span className="profile-star">★</span>}
+                    </span>
+                  )
+                )}
+
+                {collapsed && <span className="profile-tooltip">{p.name}</span>}
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="sidebar-divider" />
+        <div
+          className={`unbound-item${activeProfileId === null ? ' active' : ''}`}
+          onClick={() => { onSelect(null); onClose?.() }}
+        >
+          <div className="unbound-icon">✦</div>
+          {!collapsed && <span className="unbound-name">{i18n.unboundLabel}</span>}
+          {collapsed && <span className="profile-tooltip">{i18n.unboundLabel}</span>}
+        </div>
+      </aside>
+
+      {/* Context Menu */}
+      {contextMenu && ctxProfile && (
+        <div
+          ref={menuRef}
+          className="context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            className="context-menu-item"
+            onClick={() => { onStar(ctxProfile.id); setContextMenu(null) }}
+          >
+            <StarIcon filled={ctxProfile.starred} />
+            <span>{ctxProfile.starred ? 'Unstar' : 'Star'}</span>
+          </button>
+          <div className="context-menu-divider" />
+          <button
+            className="context-menu-item"
+            onClick={() => {
+              setRenamingId(ctxProfile.id)
+              setRenameValue(ctxProfile.name)
+              setContextMenu(null)
             }}
-            onBlur={commitAdd}
-          />
+          >
+            <PencilIcon />
+            <span>Rename</span>
+          </button>
+          <div className="context-menu-divider" />
+          <button
+            className="context-menu-item danger"
+            onClick={() => { setDeleteConfirm(ctxProfile.id); setContextMenu(null) }}
+          >
+            <TrashIcon />
+            <span>Delete</span>
+          </button>
         </div>
       )}
 
-      <div className="profile-list">
-        {profiles.map(p => {
-          const isActive = activeProfileId === p.id
-          return (
-            <div key={p.id} className={`profile-item${isActive ? ' active' : ''}`} onClick={() => onSelect(p.id)}>
-              <div className={`profile-avatar${isActive ? ' avatar-active' : ''}`}>{p.name[0].toUpperCase()}</div>
-              {!collapsed && <span className="profile-name">{p.name}</span>}
-              {!collapsed && (
-                <button className="profile-delete" onClick={e => { e.stopPropagation(); onDelete(p.id) }} title="Delete">
-                  ×
-                </button>
-              )}
-              {collapsed && <span className="profile-tooltip">{p.name}</span>}
+      {/* Delete Confirm Dialog */}
+      {deleteConfirm && (
+        <div className="confirm-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
+            <p className="confirm-text">Delete this flame?</p>
+            <div className="confirm-actions">
+              <button className="confirm-cancel" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+              <button
+                className="confirm-delete"
+                onClick={() => { onDelete(deleteConfirm); setDeleteConfirm(null) }}
+              >
+                Delete
+              </button>
             </div>
-          )
-        })}
-      </div>
-
-      <div className="sidebar-divider" />
-      <div className={`unbound-item${activeProfileId === null ? ' active' : ''}`} onClick={() => onSelect(null)}>
-        <div className="unbound-icon">✦</div>
-        {!collapsed && <span className="unbound-name">{i18n.unboundLabel}</span>}
-        {collapsed && <span className="profile-tooltip">{i18n.unboundLabel}</span>}
-      </div>
-    </aside>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -357,18 +533,13 @@ function PhonePreview({
   mode,
   replyMsg, replyResults, replyLoading,
   rwText, rwResults, rwLoading,
-  activeProfile, lang, i18n,
+  activeProfile, i18n,
   onCopied, onRegenerate,
 }) {
   const [replySelectedId, setReplySelectedId] = useState(null)
   const [rwSelectedId,    setRwSelectedId]    = useState(null)
   const messagesEndRef = useRef(null)
 
-  // Reset selection when results change
-  useEffect(() => setReplySelectedId(null), [replyResults])
-  useEffect(() => setRwSelectedId(null),    [rwResults])
-
-  // Scroll to bottom on updates
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [replyResults, rwResults, replyMsg, rwText, replyLoading, rwLoading])
@@ -394,23 +565,18 @@ function PhonePreview({
   return (
     <div className="phone-wrapper">
       <div className="phone-frame">
-        {/* Notch */}
         <div className="phone-notch-row">
           <div className="phone-notch-pill" />
         </div>
 
-        {/* Screen */}
         <div className="phone-inner">
-          {/* Header */}
           <div className="phone-header">
             <button className="phone-back">‹</button>
             <div className="phone-avatar-sm">{profileInitial}</div>
             <span className="phone-name">{profileName}</span>
           </div>
 
-          {/* Messages — key=mode triggers fade on tab switch */}
           <div className="phone-messages" key={mode}>
-            {/* Reply mode: their message or placeholder */}
             {mode === 'reply' && (
               replyMsg.trim() ? (
                 <div className="bubble-them">{replyMsg}</div>
@@ -419,12 +585,10 @@ function PhonePreview({
               )
             )}
 
-            {/* Rewrite mode: my original text (only before AI results appear) */}
             {mode === 'rewrite' && rwText.trim() && results.length === 0 && !loading && (
               <div className="bubble-me">{rwText}</div>
             )}
 
-            {/* Typing dots */}
             {loading && (
               <div className="typing-indicator">
                 <span className="typing-dot" />
@@ -433,7 +597,6 @@ function PhonePreview({
               </div>
             )}
 
-            {/* AI results */}
             {results.length > 0 && !loading && (
               <>
                 <div className="ai-divider">
@@ -459,7 +622,6 @@ function PhonePreview({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Status bar */}
           {selectedCard && (
             <div className="phone-status" onClick={handleStatusCopy}>
               {i18n.phoneStatusTpl(i18n.styles[selectedCard.style])}
@@ -467,7 +629,6 @@ function PhonePreview({
           )}
         </div>
 
-        {/* Home bar */}
         <div className="phone-bottom">
           <div className="phone-home-bar" />
         </div>
@@ -487,6 +648,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem(SIDEBAR_KEY) === 'true' } catch { return false }
   })
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Reply tab
   const [replyMsg,     setReplyMsg]     = useState('')
@@ -542,13 +704,21 @@ export default function App() {
 
   const addProfile = useCallback((name) => {
     const id = `p-${Date.now()}`
-    setProfiles(prev => [...prev, { id, name, history: [] }])
+    setProfiles(prev => [...prev, { id, name, starred: false, createdAt: Date.now(), history: [] }])
     setActiveProfileId(id)
   }, [])
 
   const deleteProfile = useCallback((id) => {
     setProfiles(prev => prev.filter(p => p.id !== id))
     setActiveProfileId(prev => prev === id ? null : prev)
+  }, [])
+
+  const starProfile = useCallback((id) => {
+    setProfiles(prev => prev.map(p => p.id === id ? { ...p, starred: !p.starred } : p))
+  }, [])
+
+  const renameProfile = useCallback((id, name) => {
+    setProfiles(prev => prev.map(p => p.id === id ? { ...p, name } : p))
   }, [])
 
   const handleCopied = useCallback((cardText) => {
@@ -562,7 +732,7 @@ export default function App() {
   }, [activeProfileId, mode, replyMsg, rwText])
 
   const handleRegenerate = useCallback((cardId, style) => {
-    const pool = mode === 'reply' ? replyPool[lang][style] : rewritePool[lang][style]
+    const pool = replyPool[lang][style]
     const setter = mode === 'reply' ? setReplyResults : setRwResults
     setter(prev => prev.map(card => {
       if (card.id !== cardId) return card
@@ -597,7 +767,7 @@ export default function App() {
     setRwError(''); setRwLoading(true); setRwResults([])
     // eslint-disable-next-line no-unused-vars
     const _ctx = buildContext(activeHistory, i)
-    setTimeout(() => { setRwResults(getMockCards(rwStyles, lang, rewritePool)); setRwLoading(false) }, 1500)
+    setTimeout(() => { setRwResults(getMockCards(rwStyles, lang, replyPool)); setRwLoading(false) }, 1500)
   }, [rwText, rwStyles, lang, i, activeHistory])
 
   return (
@@ -606,10 +776,14 @@ export default function App() {
         profiles={profiles}
         activeProfileId={activeProfileId}
         collapsed={sidebarCollapsed}
+        open={sidebarOpen}
         onToggleCollapse={toggleSidebarCollapse}
         onSelect={setActiveProfileId}
         onAdd={addProfile}
+        onStar={starProfile}
+        onRename={renameProfile}
         onDelete={deleteProfile}
+        onClose={() => setSidebarOpen(false)}
         i18n={i}
       />
 
@@ -617,6 +791,13 @@ export default function App() {
         <div className="app">
           <header className="header">
             <div className="title-row">
+              <button
+                className="mobile-sidebar-btn"
+                onClick={() => setSidebarOpen(v => !v)}
+                aria-label="Open menu"
+              >
+                <MenuIcon />
+              </button>
               <h1>{i.appTitle}</h1>
               <div className="lang-switch">
                 <button className={`lang-link${lang === 'zh' ? ' active' : ''}`} onClick={() => setLang('zh')}>中文</button>
