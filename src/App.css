@@ -137,6 +137,8 @@
   transition: background 0.12s ease;
   border-left: 2px solid transparent;
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
   overflow: hidden;
 }
 
