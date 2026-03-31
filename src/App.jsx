@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import './App.css'
+import LandingPage from './components/LandingPage'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'flame_profiles'
@@ -642,6 +643,7 @@ function PhonePreview({
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
+  const [onboarded, setOnboarded] = useState(() => localStorage.getItem('jmt_onboarded') === 'true')
   const [lang, setLang] = useState('zh')
   const [mode, setMode] = useState('reply')
 
@@ -755,23 +757,75 @@ export default function App() {
     setRwError('')
   }, [])
 
-  const handleReplyGenerate = useCallback(() => {
+  const apiCall = useCallback(async (prompt) => {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+    const data = await res.json()
+    return data.content[0].text
+  }, [])
+
+  const handleReplyGenerate = useCallback(async () => {
     if (!replyMsg.trim()) { setReplyError(i.errorMsg); return }
     if (!replyStyles.length) { setReplyError(i.errorStyle); return }
     setReplyError(''); setReplyLoading(true); setReplyResults([])
-    // eslint-disable-next-line no-unused-vars
-    const _ctx = buildContext(activeHistory, i)
-    setTimeout(() => { setReplyResults(getMockCards(replyStyles, lang, replyPool)); setReplyLoading(false) }, 1500)
-  }, [replyMsg, replyStyles, lang, i, activeHistory])
+    try {
+      const results = await Promise.all(
+        replyStyles.map(async (style, idx) => {
+          const prompt = `请用${style}的风格，帮我回复这条消息：「${replyMsg}」。只输出回复内容，中文，不超过50字。`
+          const text = await apiCall(prompt)
+          return { id: `${style}-${Date.now()}-${idx}`, style, text }
+        })
+      )
+      setReplyResults(results)
+    } catch (err) {
+      setReplyError('请求失败，请检查 API Key')
+      console.error(err)
+    } finally {
+      setReplyLoading(false)
+    }
+  }, [replyMsg, replyStyles, i, apiCall])
 
-  const handleRwGenerate = useCallback(() => {
+  const handleRwGenerate = useCallback(async () => {
     if (!rwText.trim()) { setRwError(i.errorMyText); return }
     if (!rwStyles.length) { setRwError(i.errorStyle); return }
     setRwError(''); setRwLoading(true); setRwResults([])
-    // eslint-disable-next-line no-unused-vars
-    const _ctx = buildContext(activeHistory, i)
-    setTimeout(() => { setRwResults(getMockCards(rwStyles, lang, replyPool)); setRwLoading(false) }, 1500)
-  }, [rwText, rwStyles, lang, i, activeHistory])
+    try {
+      const results = await Promise.all(
+        rwStyles.map(async (style, idx) => {
+          const prompt = `请用${style}的风格改写这句话：「${rwText}」。只输出改写结果，中文，不超过50字。`
+          const text = await apiCall(prompt)
+          return { id: `${style}-${Date.now()}-${idx}`, style, text }
+        })
+      )
+      setRwResults(results)
+    } catch (err) {
+      setRwError('请求失败，请检查 API Key')
+      console.error(err)
+    } finally {
+      setRwLoading(false)
+    }
+  }, [rwText, rwStyles, i, apiCall])
+
+  if (!onboarded) {
+    return (
+      <LandingPage onNext={() => {
+        localStorage.setItem('jmt_onboarded', 'true')
+        setOnboarded(true)
+      }} />
+    )
+  }
 
   return (
     <div className="shell">
