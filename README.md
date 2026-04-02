@@ -1,16 +1,62 @@
-# React + Vite
+# Dating Reply App (Real API Mode)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This app now includes:
+- React + Vite frontend
+- Local Express API server (keeps your API key on server side)
+- Real AI generation via `POST /api/generate`
 
-Currently, two official plugins are available:
+## 1) Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Copy `.env.example` to `.env` and fill in your key:
 
-## React Compiler
+```bash
+cp .env.example .env
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Required env:
+- `ANTHROPIC_API_KEY` **or** `OPENAI_API_KEY`
 
-## Expanding the ESLint configuration
+Optional env:
+- `ANTHROPIC_MODEL` (default: `claude-3-5-sonnet-latest`)
+- `OPENAI_MODEL` (default: `gpt-4o-mini`)
+- `API_PORT` (default: `8787`)
+- `SYSTEM_PROMPT_BASE` (base system prompt on server)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 2) Run
+
+```bash
+npm install
+npm run dev
+```
+
+`npm run dev` starts both:
+- Vite client
+- Express API server
+
+## 3) How generation works
+
+Frontend sends:
+- `theirMessage`
+- `myIdea`
+- selected context (`stageLevel`, `interestLevel`)
+
+Backend now auto-selects provider:
+- If `ANTHROPIC_API_KEY` exists -> uses Anthropic (Claude)
+- Else if `OPENAI_API_KEY` exists -> uses OpenAI
+- Else -> returns config error
+
+It returns:
+
+```json
+{
+  "replies": {
+    "playful": "...",
+    "flirty": "...",
+    "witty": "...",
+    "charming": "...",
+    "sincere": "..."
+  }
+}
+```
+
+If API fails, frontend falls back to local mock replies so UI still works.

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './AppMobile.css'
+import LandingPage from './components/LandingPage'
 
 const FLAME_KEY = 'flame_profiles'
 
@@ -8,7 +9,7 @@ const STYLE_LABELS = {
   playful: 'Playful',
   flirty: 'Flirty',
   witty: 'Witty',
-  charming: 'Charming',
+  charming: 'Chic',
   sincere: 'Sincere',
 }
 
@@ -20,7 +21,7 @@ const STYLE_COLORS = {
   sincere: { macaron: '#A8C5E8', chipBorder: '#78A8D0', text: '#1A3D6B', phoneBg: '#E8F1FA' },
 }
 
-// Mock replies (fixed)
+// Fallback replies when API is unavailable.
 const MOCK_REPLY = {
   playful: 'Okay I was NOT expecting that but honestly... same energy 😭',
   flirty: "You can't just say that and expect me to act normal about it",
@@ -29,29 +30,16 @@ const MOCK_REPLY = {
   sincere: 'I really appreciate you saying that — means more than you know',
 }
 
-const MOCK_PROFILES = [
-  {
-    id: 'alex',
-    name: 'Alex',
-    history: [
-      { time: '2026-03-20T14:23:00Z', theirMsg: '你最近在忙什么呀', myReply: '哈哈最近在学做饭！你呢？' },
-      { time: '2026-03-22T19:45:00Z', theirMsg: '周末有空吗', myReply: '周末刚好有空，你有什么计划？' },
-    ],
-  },
-  {
-    id: 'mia',
-    name: 'Mia',
-    history: [
-      { time: '2026-03-21T11:10:00Z', theirMsg: '你喜欢什么类型的电影', myReply: '文艺片和悬疑片都喜欢，你呢？' },
-      { time: '2026-03-23T20:30:00Z', theirMsg: '推荐一首歌给我', myReply: '推荐《Something Just Like This》！你呢？' },
-    ],
-  },
-]
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const MOCK_PROFILES = []
 
 function loadProfiles() {
   try {
     const raw = localStorage.getItem(FLAME_KEY)
-    return raw ? JSON.parse(raw) : MOCK_PROFILES
+    const parsed = raw ? JSON.parse(raw) : MOCK_PROFILES
+    // Remove old seeded demo profiles while keeping user-created data.
+    return parsed.filter((p) => p.id !== 'alex' && p.id !== 'mia')
   } catch {
     return MOCK_PROFILES
   }
@@ -89,7 +77,7 @@ function CameraIcon() {
 
 function PencilIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C4967C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A070B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
     </svg>
@@ -98,7 +86,7 @@ function PencilIcon() {
 
 function PencilIconMuted() {
   return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#B0A89E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#A070B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
     </svg>
@@ -179,100 +167,188 @@ function AiBubble({ styleKey, text, color, animDelayMs, onCopy }) {
   )
 }
 
-function FlameDrawer({ open, profiles, activeProfileId, onSelectProfile, onClose, onAddProfile, onDeleteProfile }) {
-  const [adding, setAdding] = useState(false)
-  const [name, setName] = useState('')
-  const inputRef = useRef(null)
+function FlameDrawer({ open, profiles, activeProfileId, onSelectProfile, onClose, onAddProfile, onDeleteProfile, onRenameProfile, onToggleStar, userProfile }) {
+  const [menuState, setMenuState] = useState(null) // { id, x, y }
+  const [renamingId, setRenamingId] = useState(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
+  const longPressTimer = useRef(null)
+  const renameRef = useRef(null)
 
   useEffect(() => {
-    if (!adding) return
-    inputRef.current?.focus()
-  }, [adding])
-
-  const commitAdd = () => {
-    const trimmed = name.trim()
-    if (!trimmed) return
-    onAddProfile(trimmed)
-    setName('')
-    setAdding(false)
-  }
+    if (renamingId) renameRef.current?.focus()
+  }, [renamingId])
 
   if (!open) return null
+
+  const sortedProfiles = [...profiles].sort((a, b) => {
+    if (a.starred && !b.starred) return -1
+    if (!a.starred && b.starred) return 1
+    return (a.createdAt ?? 0) - (b.createdAt ?? 0)
+  })
+
+  const startPress = (id) => (e) => {
+    const src = e.touches?.[0] || e
+    longPressTimer.current = setTimeout(() => {
+      const x = Math.min((src.clientX || 0) + 8, window.innerWidth - 220)
+      const y = Math.min(src.clientY || 0, window.innerHeight - 160)
+      setMenuState({ id, x, y })
+    }, 500)
+  }
+  const cancelPress = () => clearTimeout(longPressTimer.current)
+
+  const closeMenu = () => setMenuState(null)
+
+  const handleStar = (id) => { onToggleStar(id); closeMenu() }
+
+  const handleRename = (id) => {
+    const p = profiles.find((x) => x.id === id)
+    setRenameValue(p?.name ?? '')
+    setRenamingId(id)
+    closeMenu()
+  }
+
+  const commitRename = () => {
+    const v = renameValue.trim()
+    if (v && renamingId) onRenameProfile(renamingId, v)
+    setRenamingId(null)
+  }
+
+  const handleDelete = (id) => { setDeleteConfirmId(id); closeMenu() }
+
+  const handleFAB = () => {
+    onAddProfile('Unknown')
+    onClose()
+  }
+
+  const menuProfile = menuState ? profiles.find((p) => p.id === menuState.id) : null
 
   return (
     <>
       <div className="m-flame-overlay" onClick={onClose} />
       <div className="m-flame-drawer" role="dialog" aria-modal="true">
+
+        {/* Header */}
         <div className="m-drawer-head">
-          <div className="m-drawer-title">🔥 Flames</div>
-          <button className="m-drawer-close" onClick={onClose} aria-label="Close">
-            ×
-          </button>
+          <div className="m-drawer-title">Flames</div>
+          <button className="m-drawer-close" onClick={onClose} aria-label="Close">×</button>
         </div>
 
-        {!adding ? (
-          <div className="m-drawer-add-row">
-            <button className="m-drawer-add-btn" onClick={() => setAdding(true)}>
-              + New flame
-            </button>
-          </div>
-        ) : (
-          <div className="m-drawer-add-row">
-            <input
-              ref={inputRef}
-              className="m-drawer-add-input"
-              placeholder="Enter name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commitAdd()
-                if (e.key === 'Escape') {
-                  setAdding(false)
-                  setName('')
-                }
-              }}
-              onBlur={() => {
-                // Keep "inline input + commit on Enter"; blur cancels.
-                setAdding(false)
-                setName('')
-              }}
-            />
-          </div>
-        )}
-
+        {/* Profile list */}
         <div className="m-flame-list">
+
+          {/* Default profile entry */}
           <div
-            className={`m-no-profile ${activeProfileId === null ? 'selected' : ''}`}
+            className={`m-flame-item${activeProfileId === null ? ' selected' : ''}`}
             onClick={() => onSelectProfile(null)}
           >
-            ✦ No profile
+            <div className="m-flame-avatar m-flame-avatar-anon">N</div>
+            <div className="m-flame-name">New Flame</div>
           </div>
-          {profiles.map((p) => {
+
+          {/* Flame profiles */}
+          {sortedProfiles.map((p) => {
             const selected = p.id === activeProfileId
-            const initial = (p.name?.[0] ?? '✦').toUpperCase()
+            const initial = (p.name?.[0] ?? '?').toUpperCase()
+            const isRenaming = renamingId === p.id
+
             return (
               <div
                 key={p.id}
-                className={`m-flame-item ${selected ? 'selected' : ''}`}
-                onClick={() => onSelectProfile(p.id)}
+                className={`m-flame-item${selected ? ' selected' : ''}`}
+                onClick={() => { if (!isRenaming) onSelectProfile(p.id) }}
+                onPointerDown={startPress(p.id)}
+                onPointerUp={cancelPress}
+                onPointerLeave={cancelPress}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  const x = Math.min(e.clientX + 8, window.innerWidth - 220)
+                  const y = Math.min(e.clientY, window.innerHeight - 160)
+                  setMenuState({ id: p.id, x, y })
+                }}
               >
                 <div className="m-flame-avatar">{initial}</div>
-                <div className="m-flame-name">{p.name}</div>
-                <div
-                  className="m-flame-delete"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onDeleteProfile(p.id)
-                  }}
-                  aria-label="Delete profile"
-                >
-                  ×
-                </div>
+                {isRenaming ? (
+                  <input
+                    ref={renameRef}
+                    className="m-flame-rename-input"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commitRename()
+                      if (e.key === 'Escape') setRenamingId(null)
+                    }}
+                    onBlur={commitRename}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <div className="m-flame-name">
+                    {p.name}
+                    {p.starred && <span className="m-flame-star">★</span>}
+                  </div>
+                )}
               </div>
             )
           })}
         </div>
+
+        {/* Bottom user card */}
+        {userProfile?.name && (
+          <div className="m-drawer-user-card">
+            <div className="m-drawer-user-avatar">{userProfile.name[0].toUpperCase()}</div>
+            <div className="m-drawer-user-info">
+              <div className="m-drawer-user-name">{userProfile.name}</div>
+              <div className="m-drawer-user-sub">My account</div>
+            </div>
+            <button className="m-drawer-user-fab" onClick={handleFAB} aria-label="New flame">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                  stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="12" y1="9" x2="12" y2="15" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="9" y1="12" x2="15" y2="12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Long-press context menu */}
+      {menuState && menuProfile && (
+        <>
+          <div className="m-menu-overlay" onClick={closeMenu} />
+          <div className="m-flame-menu" style={{ top: menuState.y, left: menuState.x }}>
+            <div className="m-flame-menu-item" onClick={() => handleStar(menuState.id)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill={menuProfile.starred ? '#F5A623' : 'none'} stroke={menuProfile.starred ? '#F5A623' : '#1A1A1A'} strokeWidth="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span>{menuProfile.starred ? 'Unstar' : 'Star'}</span>
+            </div>
+            <div className="m-flame-menu-item" onClick={() => handleRename(menuState.id)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+              <span>Rename</span>
+            </div>
+            <div className="m-flame-menu-item m-flame-menu-delete" onClick={() => handleDelete(menuState.id)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E53E3E" strokeWidth="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              <span>Delete</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Delete confirmation */}
+      {deleteConfirmId && (
+        <>
+          <div className="m-menu-overlay" onClick={() => setDeleteConfirmId(null)} />
+          <div className="m-delete-confirm">
+            <div className="m-delete-confirm-text">Delete this flame?</div>
+            <div className="m-delete-confirm-actions">
+              <button className="m-delete-cancel" onClick={() => setDeleteConfirmId(null)}>Cancel</button>
+              <button className="m-delete-ok" onClick={() => {
+                onDeleteProfile(deleteConfirmId)
+                setDeleteConfirmId(null)
+              }}>Delete</button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }
@@ -322,7 +398,8 @@ function StageBottomSheet({ open, draft, onChange, onApply, onClose }) {
 
 function InterestBottomSheet({ open, draft, onChange, onApply, onClose }) {
   const desc = {
-    1: 'Still observing',
+    0: 'Not really feeling it',
+    1: 'Still figuring out',
     2: 'Curious',
     3: 'Interested',
     4: 'Really into it',
@@ -330,7 +407,7 @@ function InterestBottomSheet({ open, draft, onChange, onApply, onClose }) {
   }
   if (!open) return null
 
-  const fillPct = ((draft - 1) / 4) * 100
+  const fillPct = (draft / 5) * 100
 
   return (
     <>
@@ -346,21 +423,21 @@ function InterestBottomSheet({ open, draft, onChange, onApply, onClose }) {
             <div className="m-track">
               <div className="m-track-fill" style={{ width: `${fillPct}%` }} />
             </div>
-            <div className="m-dots-row">
-              {Array.from({ length: 5 }).map((_, idx) => {
-                const value = idx + 1
+            <div className="m-dots-row m-dots-row-6">
+              {Array.from({ length: 6 }).map((_, idx) => {
+                const value = idx
                 const selected = value === draft
                 return (
-                  <div key={value} className="m-dot-wrap" onClick={() => onChange(value)} role="button">
-                    <div className={`m-dot ${selected ? 'selected' : ''}`} />
+                  <div key={value} className={`m-dot-wrap${selected ? ' selected' : ''}`} onClick={() => onChange(value)} role="button">
+                    <div className={`m-dot${selected ? ' selected' : ''}`} />
                     <div className="m-dot-num">{value}</div>
                   </div>
                 )
               })}
             </div>
             <div className="m-interest-ends">
-              <span>Still figuring out</span>
-              <span>Really into it</span>
+              <span>Not feeling it</span>
+              <span>Catching feelings</span>
             </div>
           </div>
 
@@ -374,6 +451,18 @@ function InterestBottomSheet({ open, draft, onChange, onApply, onClose }) {
 }
 
 export default function AppMobile() {
+  const [showLanding, setShowLanding] = useState(() => {
+    try {
+      const profile = JSON.parse(localStorage.getItem('user_profile') || 'null')
+      return !(profile && profile.name && profile.name.trim().length > 0)
+    } catch {
+      return true
+    }
+  })
+
+  const userProfile = (() => {
+    try { return JSON.parse(localStorage.getItem('user_profile') || 'null') } catch { return null }
+  })()
   const [phase, setPhase] = useState('input') // input | results
 
   const [profiles, setProfiles] = useState(() => loadProfiles())
@@ -397,6 +486,8 @@ export default function AppMobile() {
   const [myIdea, setMyIdea] = useState('')
   const [replyStyles, setReplyStyles] = useState(['playful']) // initial: at least 1
   const [replyLoading, setReplyLoading] = useState(false)
+  const [generatedReplies, setGeneratedReplies] = useState(MOCK_REPLY)
+  const [generationError, setGenerationError] = useState('')
 
   const [screenshotOpen, setScreenshotOpen] = useState(false)
   const [screenshotPreview, setScreenshotPreview] = useState(null)
@@ -425,12 +516,7 @@ export default function AppMobile() {
 
   const canGenerate = activeText.trim().length > 0 && activeStyles.length > 0 && activeStyles.length <= 3
 
-  const genTimeoutRef = useRef(null)
-  useEffect(() => {
-    return () => {
-      if (genTimeoutRef.current) clearTimeout(genTimeoutRef.current)
-    }
-  }, [])
+  const genReqIdRef = useRef(0)
 
   const onToggleStyle = useCallback(
     (styleKey) => {
@@ -453,34 +539,72 @@ export default function AppMobile() {
     [replyStyles]
   )
 
-  const startGenerate = useCallback(() => {
-    if (!canGenerate) return
+  const fetchAiReplies = useCallback(async (theirMessage) => {
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        theirMessage,
+        myIdea,
+        styles: STYLE_KEYS,
+        stageLevel,
+        interestLevel,
+        systemPrompt: '',
+      }),
+    })
+
+    if (!response.ok) {
+      const text = await response.text()
+      throw new Error(text || 'Failed to generate replies')
+    }
+
+    const data = await response.json()
+    if (!data?.replies) throw new Error('API returned invalid reply format')
+
+    return {
+      ...MOCK_REPLY,
+      ...data.replies,
+    }
+  }, [interestLevel, myIdea, stageLevel])
+
+  const runGenerate = useCallback(async (textForValidation) => {
+    const ok = textForValidation.trim().length > 0 && replyStyles.length > 0 && replyStyles.length <= 3
+    if (!ok) return
+
+    const reqId = ++genReqIdRef.current
     setPhase('results')
-
-    if (genTimeoutRef.current) clearTimeout(genTimeoutRef.current)
-
     setReplyLoading(true)
+    setGenerationError('')
 
-    genTimeoutRef.current = setTimeout(() => {
-      setReplyLoading(false)
-    }, 1500)
-  }, [canGenerate])
+    const startedAt = Date.now()
+    try {
+      const replies = await fetchAiReplies(textForValidation.trim())
+      if (reqId !== genReqIdRef.current) return
+      setGeneratedReplies(replies)
+    } catch (error) {
+      if (reqId !== genReqIdRef.current) return
+      // Keep UI usable even when API fails.
+      setGeneratedReplies(MOCK_REPLY)
+      setGenerationError('Using fallback replies. Check API key/server.')
+      console.error('AI generation failed:', error)
+    } finally {
+      const elapsed = Date.now() - startedAt
+      if (elapsed < 1500) await sleep(1500 - elapsed)
+      if (reqId === genReqIdRef.current) setReplyLoading(false)
+    }
+  }, [fetchAiReplies, replyStyles])
+
+  const startGenerate = useCallback(() => {
+    runGenerate(activeText)
+  }, [activeText, runGenerate])
 
   const [isEditingTextBubble, setIsEditingTextBubble] = useState(false)
   const [draftReplyMsg, setDraftReplyMsg] = useState('')
   const [isScreenshotMenuOpen, setIsScreenshotMenuOpen] = useState(false)
 
-  const triggerGenerate = useCallback(
-    (textForValidation) => {
-      const ok = textForValidation.trim().length > 0 && replyStyles.length > 0 && replyStyles.length <= 3
-      if (!ok) return
-      setPhase('results')
-      if (genTimeoutRef.current) clearTimeout(genTimeoutRef.current)
-      setReplyLoading(true)
-      genTimeoutRef.current = setTimeout(() => setReplyLoading(false), 1500)
-    },
-    [replyStyles]
-  )
+  const triggerGenerate = useCallback((textForValidation) => {
+    runGenerate(textForValidation)
+  }, [runGenerate])
 
   const handleTextBubbleDone = useCallback(() => {
     const next = draftReplyMsg
@@ -503,12 +627,12 @@ export default function AppMobile() {
 
   // Keep bubbles in sync with selected styles during results state.
   const displayBubbles = useMemo(() => {
-    const styleTextMap = MOCK_REPLY
+    const styleTextMap = generatedReplies
     return STYLE_KEYS.filter((k) => activeStyles.includes(k)).map((styleKey) => ({
       styleKey,
       text: styleTextMap[styleKey],
     }))
-  }, [activeStyles])
+  }, [activeStyles, generatedReplies])
 
   const onCopied = useCallback((cardText) => {
     // Keep a light "history" persistence similar to the original app.
@@ -529,7 +653,7 @@ export default function AppMobile() {
 
   const addProfile = useCallback((name) => {
     const id = `p-${Date.now()}`
-    setProfiles((prev) => [...prev, { id, name, history: [] }])
+    setProfiles((prev) => [...prev, { id, name, starred: false, createdAt: Date.now(), history: [] }])
     setActiveProfileId(id)
   }, [])
 
@@ -538,9 +662,18 @@ export default function AppMobile() {
     setActiveProfileId((prev) => (prev === id ? null : prev))
   }, [])
 
+  const renameProfile = useCallback((id, newName) => {
+    setProfiles((prev) => prev.map((p) => p.id === id ? { ...p, name: newName } : p))
+  }, [])
+
+  const toggleStar = useCallback((id) => {
+    setProfiles((prev) => prev.map((p) => p.id === id ? { ...p, starred: !p.starred } : p))
+  }, [])
+
   const selectedStageChip = stageApplied
   const stageChipLabel = selectedStageChip ? 'Stage ▾' : 'Stage ▾'
   const interestChipLabel = interestApplied ? `Interest ${interestLevel}/5 ▾` : 'Interest ▾'
+  // interestLevel valid range: 0–5
 
   const headerStageChip = (
     <button
@@ -565,6 +698,10 @@ export default function AppMobile() {
       {interestChipLabel}
     </button>
   )
+
+  if (showLanding) {
+    return <LandingPage onNext={() => setShowLanding(false)} />
+  }
 
   return (
     <div className="mobile-shell">
@@ -599,11 +736,11 @@ export default function AppMobile() {
                   fontFamily: "'Space Grotesk', sans-serif",
                   fontWeight: 500,
                   fontSize: 15,
-                  color: '#C4967C',
+                  color: '#1A1A1A',
                   cursor: 'pointer',
                 }}
               >
-                Add a name →
+                Add a name
               </button>
             )
           ) : (
@@ -850,12 +987,11 @@ export default function AppMobile() {
                 </div>
               )}
 
-              {/* AI suggestions divider */}
-              <div className="m-ai-divider">
-                <div className="m-ai-divider-line" />
-                <div className="m-ai-divider-text">✦ AI suggestions</div>
-                <div className="m-ai-divider-line" />
-              </div>
+              {generationError && (
+                <div style={{ fontSize: 11, color: '#8A8A8A', marginBottom: 6 }}>
+                  {generationError}
+                </div>
+              )}
 
               {/* Loading / AI bubbles */}
               {activeLoading ? (
@@ -931,6 +1067,9 @@ export default function AppMobile() {
         onClose={() => setDrawerOpen(false)}
         onAddProfile={addProfile}
         onDeleteProfile={deleteProfile}
+        onRenameProfile={renameProfile}
+        onToggleStar={toggleStar}
+        userProfile={userProfile}
       />
 
       <StageBottomSheet
