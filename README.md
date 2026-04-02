@@ -4,6 +4,7 @@ This app now includes:
 - React + Vite frontend
 - Local Express API server (keeps your API key on server side)
 - Real AI generation via `POST /api/generate`
+- Vercel serverless API routes in `api/*` for production deploy
 
 ## 1) Setup
 
@@ -32,6 +33,17 @@ npm run dev
 `npm run dev` starts both:
 - Vite client
 - Express API server
+
+## 2.1) Deploy to Vercel
+
+- Connect this GitHub repo in Vercel
+- Framework: Vite (auto-detected)
+- Build command: `npm run build`
+- Output directory: `dist`
+- Add env vars in Vercel project settings:
+  - `ANTHROPIC_API_KEY` (recommended) or `OPENAI_API_KEY`
+  - `ANTHROPIC_MODEL` / `OPENAI_MODEL` (optional)
+  - `SYSTEM_PROMPT_BASE` (optional)
 
 ## 3) How generation works
 
