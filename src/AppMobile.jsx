@@ -585,7 +585,8 @@ export default function AppMobile() {
       if (reqId !== genReqIdRef.current) return
       // Keep UI usable even when API fails.
       setGeneratedReplies(MOCK_REPLY)
-      setGenerationError('Using fallback replies. Check API key/server.')
+      const errMsg = String(error?.message || 'Unknown error')
+      setGenerationError(`Fallback: ${errMsg}`)
       console.error('AI generation failed:', error)
     } finally {
       const elapsed = Date.now() - startedAt
