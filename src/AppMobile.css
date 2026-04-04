@@ -4,7 +4,6 @@
   --mobile-max: 430px;
   --header-h: 56px;
   --bar-h: 44px;
-  --bottom-chip-h: 76px;
 }
 
 /* Mobile-first reset */
@@ -387,12 +386,65 @@ body {
   cursor: not-allowed;
 }
 
+.m-input-inline-error {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #9a3412;
+  padding: 0 4px;
+  margin: -4px 0 0;
+}
+
 /* Results area */
 .m-results-scroll {
-  padding: 12px 12px calc(12px + var(--bottom-chip-h) + 8px);
+  padding: 12px 12px max(16px, env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* Bubbles + style row: small gap so chips don’t hug the last bubble */
+.m-results-ai-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+}
+
+.m-results-ai-bubbles {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.m-results-ai-bubbles .m-typing {
+  align-self: flex-end;
+}
+
+.m-results-style-chips {
+  padding: 0 4px max(12px, env(safe-area-inset-bottom, 0px));
+  background: transparent;
+}
+
+/* “Their message” on results + edit hint */
+.m-results-their-message-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: flex-start;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.m-results-edit-hint {
+  margin: 0;
+  max-width: 85%;
+  font-size: 10px;
+  font-weight: 500;
+  color: #B0A89E;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
 }
 
 /* ===== Result text bubble (left) ===== */
@@ -641,16 +693,6 @@ body {
 }
 
 /* ===== Loading + typing ===== */
-
-/* Bottom style chips row */
-.m-bottom-style-row {
-  position: sticky;
-  bottom: 0;
-  z-index: 20;
-  background: #F0F0F0;
-  border-top: 0.5px solid #E8E0D8;
-  padding: 8px 16px 20px;
-}
 
 .m-idea-card {
   border: 1px dashed #D0C8C0;

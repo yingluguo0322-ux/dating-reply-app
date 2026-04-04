@@ -1,3 +1,4 @@
+/* global process */
 import { getProvider } from '../lib/aiProvider.js'
 
 export default async function handler(_req, res) {

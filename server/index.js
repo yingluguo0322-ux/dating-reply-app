@@ -4,7 +4,7 @@ import express from 'express'
 import { generateReplies, getProvider } from '../lib/aiProvider.js'
 
 const app = express()
-app.use(express.json({ limit: '1mb' }))
+app.use(express.json({ limit: '12mb' }))
 
 const PORT = Number(process.env.API_PORT || 8787)
 

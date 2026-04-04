@@ -32,6 +32,45 @@ const MOCK_REPLY = {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+/** Object URL from a file input → base64 + media type for vision API */
+function blobUrlToImagePayload(blobUrl) {
+  return fetch(blobUrl)
+    .then((r) => {
+      if (!r.ok) throw new Error('Could not read screenshot')
+      return r.blob()
+    })
+    .then(
+      (blob) =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            const dataUrl = reader.result
+            if (typeof dataUrl !== 'string' || !dataUrl.includes(',')) {
+              reject(new Error('Could not read screenshot'))
+              return
+            }
+            const [, b64] = dataUrl.split(',')
+            const t = (blob.type || '').toLowerCase()
+            if (t.includes('heic') || t.includes('heif')) {
+              reject(
+                new Error(
+                  'This photo format (HEIC) is not supported for auto-read. Export as JPEG/PNG or paste text instead.'
+                )
+              )
+              return
+            }
+            const mediaType =
+              blob.type && /^image\/(jpeg|png|gif|webp)$/i.test(blob.type)
+                ? blob.type
+                : 'image/jpeg'
+            resolve({ base64: b64, mediaType })
+          }
+          reader.onerror = () => reject(reader.error || new Error('Could not read screenshot'))
+          reader.readAsDataURL(blob)
+        })
+    )
+}
+
 const MOCK_PROFILES = []
 
 function loadProfiles() {
@@ -89,26 +128,6 @@ function PencilIconMuted() {
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#A070B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-    </svg>
-  )
-}
-
-function ImageIconSmall() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="5" width="18" height="14" rx="3" />
-      <path d="M8 13l2-2 4 4 2-2 3 3" />
-      <circle cx="9" cy="10" r="1" />
-    </svg>
-  )
-}
-
-function TextIconSmall() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 7h16" />
-      <path d="M4 12h16" />
-      <path d="M4 17h10" />
     </svg>
   )
 }
@@ -488,6 +507,8 @@ export default function AppMobile() {
   const [replyLoading, setReplyLoading] = useState(false)
   const [generatedReplies, setGeneratedReplies] = useState(MOCK_REPLY)
   const [generationError, setGenerationError] = useState('')
+  /** After user returns from results via pencil, primary CTA reads "Re-generate". */
+  const [ctaRegenerate, setCtaRegenerate] = useState(false)
 
   const [screenshotOpen, setScreenshotOpen] = useState(false)
   const [screenshotPreview, setScreenshotPreview] = useState(null)
@@ -501,6 +522,7 @@ export default function AppMobile() {
 
   const handleScreenshotFile = useCallback((file) => {
     if (!file) return
+    setGenerationError('')
     const nextUrl = URL.createObjectURL(file)
     setScreenshotPreview((prev) => {
       if (prev) URL.revokeObjectURL(prev)
@@ -514,7 +536,8 @@ export default function AppMobile() {
   const activeLoading = replyLoading
   const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? null
 
-  const canGenerate = activeText.trim().length > 0 && activeStyles.length > 0 && activeStyles.length <= 3
+  const hasTheirContent = activeText.trim().length > 0 || !!screenshotPreview
+  const canGenerate = hasTheirContent && activeStyles.length > 0 && activeStyles.length <= 3
 
   const genReqIdRef = useRef(0)
 
@@ -539,92 +562,103 @@ export default function AppMobile() {
     [replyStyles]
   )
 
-  const fetchAiReplies = useCallback(async (theirMessage) => {
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        theirMessage,
-        myIdea,
-        styles: STYLE_KEYS,
-        stageLevel,
-        interestLevel,
-        systemPrompt: '',
-      }),
-    })
+  const fetchAiReplies = useCallback(
+    async ({ theirMessage, imageBase64, imageMediaType }) => {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          theirMessage,
+          myIdea,
+          imageBase64: imageBase64 || undefined,
+          imageMediaType: imageMediaType || undefined,
+          styles: STYLE_KEYS,
+          stageLevel,
+          interestLevel,
+          systemPrompt: '',
+        }),
+      })
 
-    if (!response.ok) {
-      const text = await response.text()
-      throw new Error(text || 'Failed to generate replies')
-    }
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text || 'Failed to generate replies')
+      }
 
-    const data = await response.json()
-    if (!data?.replies) throw new Error('API returned invalid reply format')
+      const data = await response.json()
+      if (!data?.replies) throw new Error('API returned invalid reply format')
 
-    return {
-      ...MOCK_REPLY,
-      ...data.replies,
-    }
-  }, [interestLevel, myIdea, stageLevel])
+      return {
+        ...MOCK_REPLY,
+        ...data.replies,
+      }
+    },
+    [interestLevel, myIdea, stageLevel]
+  )
 
-  const runGenerate = useCallback(async (textForValidation) => {
-    const ok = textForValidation.trim().length > 0 && replyStyles.length > 0 && replyStyles.length <= 3
-    if (!ok) return
+  const runGenerate = useCallback(
+    async (textForValidation) => {
+      setGenerationError('')
+      const hasImage = Boolean(screenshotPreview)
+      const textOk = textForValidation.trim().length > 0
+      const ok = (textOk || hasImage) && replyStyles.length > 0 && replyStyles.length <= 3
+      if (!ok) return
 
-    const reqId = ++genReqIdRef.current
-    setPhase('results')
-    setReplyLoading(true)
-    setGenerationError('')
+      let imageBase64
+      let imageMediaType
+      if (hasImage) {
+        try {
+          const img = await blobUrlToImagePayload(screenshotPreview)
+          imageBase64 = img.base64
+          imageMediaType = img.mediaType
+        } catch (e) {
+          console.error('Screenshot read failed:', e)
+          setGenerationError(
+            String(e?.message || 'Could not read your screenshot. Try again or paste text instead.')
+          )
+          return
+        }
+      }
 
-    const startedAt = Date.now()
-    try {
-      const replies = await fetchAiReplies(textForValidation.trim())
-      if (reqId !== genReqIdRef.current) return
-      setGeneratedReplies(replies)
-    } catch (error) {
-      if (reqId !== genReqIdRef.current) return
-      // Keep UI usable even when API fails.
-      setGeneratedReplies(MOCK_REPLY)
-      const errMsg = String(error?.message || 'Unknown error')
-      setGenerationError(`Fallback: ${errMsg}`)
-      console.error('AI generation failed:', error)
-    } finally {
-      const elapsed = Date.now() - startedAt
-      if (elapsed < 1500) await sleep(1500 - elapsed)
-      if (reqId === genReqIdRef.current) setReplyLoading(false)
-    }
-  }, [fetchAiReplies, replyStyles])
+      const reqId = ++genReqIdRef.current
+      setPhase('results')
+      setReplyLoading(true)
+      setGenerationError('')
+
+      const startedAt = Date.now()
+      try {
+        const replies = await fetchAiReplies({
+          theirMessage: textForValidation.trim(),
+          imageBase64,
+          imageMediaType,
+        })
+        if (reqId !== genReqIdRef.current) return
+        setGeneratedReplies(replies)
+      } catch (error) {
+        if (reqId !== genReqIdRef.current) return
+        // Keep UI usable even when API fails.
+        setGeneratedReplies(MOCK_REPLY)
+        const errMsg = String(error?.message || 'Unknown error')
+        setGenerationError(`Fallback: ${errMsg}`)
+        console.error('AI generation failed:', error)
+      } finally {
+        const elapsed = Date.now() - startedAt
+        if (elapsed < 1500) await sleep(1500 - elapsed)
+        if (reqId === genReqIdRef.current) setReplyLoading(false)
+      }
+    },
+    [fetchAiReplies, replyStyles, screenshotPreview]
+  )
 
   const startGenerate = useCallback(() => {
     runGenerate(activeText)
   }, [activeText, runGenerate])
 
-  const [isEditingTextBubble, setIsEditingTextBubble] = useState(false)
-  const [draftReplyMsg, setDraftReplyMsg] = useState('')
-  const [isScreenshotMenuOpen, setIsScreenshotMenuOpen] = useState(false)
-
-  const triggerGenerate = useCallback((textForValidation) => {
-    runGenerate(textForValidation)
-  }, [runGenerate])
-
-  const handleTextBubbleDone = useCallback(() => {
-    const next = draftReplyMsg
-    setIsEditingTextBubble(false)
-    setDraftReplyMsg('')
-    setReplyMsg(next)
-    triggerGenerate(next)
-  }, [draftReplyMsg, triggerGenerate])
-
-  const handleTextBubbleCancel = useCallback(() => {
-    setIsEditingTextBubble(false)
-    setDraftReplyMsg('')
+  /** Results screen: pencil goes back to input so the user edits in the main form. */
+  const backToInputForEdit = useCallback(() => {
+    setPhase('input')
+    setGenerationError('')
+    setCtaRegenerate(true)
   }, [])
-
-  const openTextEdit = useCallback(() => {
-    setIsScreenshotMenuOpen(false)
-    setDraftReplyMsg(replyMsg)
-    setIsEditingTextBubble(true)
-  }, [replyMsg])
 
   // Keep bubbles in sync with selected styles during results state.
   const displayBubbles = useMemo(() => {
@@ -788,7 +822,7 @@ export default function AppMobile() {
                 <div className="m-message-with-thumb">
                   <textarea
                     className="m-textarea m-textarea-with-thumb"
-                    placeholder="Paste what they sent you..."
+                    placeholder="Optional — we read their message from your screenshot"
                     value={replyMsg}
                     onChange={(e) => setReplyMsg(e.target.value)}
                   />
@@ -825,7 +859,9 @@ export default function AppMobile() {
                     <CameraIcon />
                     <div className="m-upload-label">Upload a screenshot</div>
                   </div>
-                  <div className="m-upload-hint">AI will read the chat and fill in the message for you</div>
+                  <div className="m-upload-hint">
+                    AI reads the chat from your screenshot. You can leave the text box empty or add a note.
+                  </div>
                 </div>
               )}
             </div>
@@ -874,119 +910,61 @@ export default function AppMobile() {
               </div>
             </div>
 
+            {generationError && (
+              <div className="m-input-inline-error" role="alert">
+                {generationError}
+              </div>
+            )}
+
             <button
               className="m-generate-btn"
               disabled={!canGenerate || activeLoading}
               onClick={startGenerate}
             >
-              {activeLoading ? 'Generating...' : 'Generate'}
+              {activeLoading
+                ? 'Generating...'
+                : ctaRegenerate
+                  ? 'Re-generate'
+                  : 'Generate'}
             </button>
           </div>
         ) : (
-          <>
-            <div className="m-results-scroll">
+          <div className="m-results-scroll">
               {/* Left message bubble (text or screenshot) */}
-              {screenshotPreview ? (
-                <div className="m-screenshot-bubble-wrap">
-                  <div className="m-screenshot-bubble">
-                    <img
-                      className="m-screenshot-img"
-                      src={screenshotPreview}
-                      alt="uploaded screenshot"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    className="m-screenshot-pencil-btn"
-                    onClick={() => {
-                      setIsScreenshotMenuOpen((v) => !v)
-                      setIsEditingTextBubble(false)
-                    }}
-                    aria-label="Edit screenshot options"
-                  >
-                    <PencilIconMuted />
-                  </button>
-
-                  {isScreenshotMenuOpen && (
-                    <>
-                      <div
-                        className="m-menu-overlay"
-                        onClick={() => setIsScreenshotMenuOpen(false)}
+              <div className="m-results-their-message-block">
+                {screenshotPreview ? (
+                  <div className="m-screenshot-bubble-wrap">
+                    <div className="m-screenshot-bubble">
+                      <img
+                        className="m-screenshot-img"
+                        src={screenshotPreview}
+                        alt="uploaded screenshot"
                       />
-                      <div className="m-screenshot-menu" onClick={(e) => e.stopPropagation()}>
-                        <div
-                          className="m-screenshot-menu-item"
-                          onClick={() => {
-                            setIsScreenshotMenuOpen(false)
-                            fileInputRef.current?.click()
-                          }}
-                          role="button"
-                          tabIndex={0}
-                        >
-                          <ImageIconSmall />
-                          <span>Re-upload screenshot</span>
-                        </div>
-                        <div
-                          className="m-screenshot-menu-item m-screenshot-menu-item-last"
-                          onClick={() => {
-                            setIsScreenshotMenuOpen(false)
-                            if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
-                            setScreenshotPreview(null)
-                            setReplyMsg('')
-                            setDraftReplyMsg('')
-                            setIsEditingTextBubble(true)
-                          }}
-                          role="button"
-                          tabIndex={0}
-                        >
-                          <TextIconSmall />
-                          <span>Switch to text input</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="m-textbubble-row">
-                  {isEditingTextBubble ? (
-                    <div className="m-textbubble-edit-wrap">
-                      <textarea
-                        className="m-textbubble-textarea"
-                        value={draftReplyMsg}
-                        onChange={(e) => setDraftReplyMsg(e.target.value)}
-                      />
-                      <div className="m-edit-actions">
-                        <button
-                          type="button"
-                          className="m-edit-btn cancel"
-                          onClick={handleTextBubbleCancel}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          className="m-edit-btn done"
-                          onClick={handleTextBubbleDone}
-                        >
-                          Done
-                        </button>
-                      </div>
                     </div>
-                  ) : (
-                    <>
-                      <div className="m-textbubble-view">{replyMsg.trim() || ' '}</div>
-                      <button
-                        type="button"
-                        className="m-textbubble-pencil-btn"
-                        onClick={openTextEdit}
-                        aria-label="Edit message"
-                      >
-                        <PencilIconMuted />
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
+                    <button
+                      type="button"
+                      className="m-screenshot-pencil-btn"
+                      onClick={backToInputForEdit}
+                      aria-label="Back to edit message and screenshot"
+                    >
+                      <PencilIconMuted />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="m-textbubble-row">
+                    <div className="m-textbubble-view">{replyMsg.trim() || ' '}</div>
+                    <button
+                      type="button"
+                      className="m-textbubble-pencil-btn"
+                      onClick={backToInputForEdit}
+                      aria-label="Back to edit message"
+                    >
+                      <PencilIconMuted />
+                    </button>
+                  </div>
+                )}
+                <p className="m-results-edit-hint">Tap the pencil to return and edit your message.</p>
+              </div>
 
               {generationError && (
                 <div style={{ fontSize: 11, color: '#8A8A8A', marginBottom: 6 }}>
@@ -994,59 +972,60 @@ export default function AppMobile() {
                 </div>
               )}
 
-              {/* Loading / AI bubbles */}
-              {activeLoading ? (
-                <div className="m-typing" aria-label="typing">
-                  <span className="m-typing-dot" />
-                  <span className="m-typing-dot" />
-                  <span className="m-typing-dot" />
+              {/* AI replies + style chips flow together (chips sit flush under last bubble) */}
+              <div className="m-results-ai-stack">
+                <div className="m-results-ai-bubbles">
+                  {activeLoading ? (
+                    <div className="m-typing" aria-label="typing">
+                      <span className="m-typing-dot" />
+                      <span className="m-typing-dot" />
+                      <span className="m-typing-dot" />
+                    </div>
+                  ) : (
+                    displayBubbles.map((b, idx) => (
+                      <AiBubble
+                        key={b.styleKey}
+                        styleKey={b.styleKey}
+                        text={b.text}
+                        color={STYLE_COLORS[b.styleKey]}
+                        animDelayMs={idx * 100}
+                        onCopy={onCopied}
+                      />
+                    ))
+                  )}
                 </div>
-              ) : (
-                <>
-                  {displayBubbles.map((b, idx) => (
-                    <AiBubble
-                      key={b.styleKey}
-                      styleKey={b.styleKey}
-                      text={b.text}
-                      color={STYLE_COLORS[b.styleKey]}
-                      animDelayMs={idx * 100}
-                      onCopy={onCopied}
-                    />
-                  ))}
-                </>
-              )}
-            </div>
 
-            <div className="m-bottom-style-row">
-              <div className="m-bottom-style-grid">
-                {STYLE_KEYS.map((k) => {
-                  const selected = activeStyles.includes(k)
-                  const c = STYLE_COLORS[k]
-                  const disabled = !selected && activeStyles.length >= 3
-                  return (
-                    <button
-                      key={k}
-                      className={`m-style-chip ${selected ? 'selected' : ''}`}
-                      onClick={() => onToggleStyle(k)}
-                      disabled={disabled || activeLoading}
-                      style={{
-                        background: c.macaron,
-                        color: c.text,
-                        borderColor: selected ? c.chipBorder : 'transparent',
-                        opacity: selected ? 1 : 0.4,
-                      }}
-                    >
-                      {STYLE_LABELS[k]}
-                    </button>
-                  )
-                })}
+                <div className="m-results-style-chips">
+                  <div className="m-bottom-style-grid">
+                    {STYLE_KEYS.map((k) => {
+                      const selected = activeStyles.includes(k)
+                      const c = STYLE_COLORS[k]
+                      const disabled = !selected && activeStyles.length >= 3
+                      return (
+                        <button
+                          key={k}
+                          className={`m-style-chip ${selected ? 'selected' : ''}`}
+                          onClick={() => onToggleStyle(k)}
+                          disabled={disabled || activeLoading}
+                          style={{
+                            background: c.macaron,
+                            color: c.text,
+                            borderColor: selected ? c.chipBorder : 'transparent',
+                            opacity: selected ? 1 : 0.4,
+                          }}
+                        >
+                          {STYLE_LABELS[k]}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
-          </>
         )}
       </div>
 
-      {/* Hidden file input for screenshot upload (used by input area + results menu) */}
+      {/* Hidden file input for screenshot upload */}
       <input
         ref={fileInputRef}
         type="file"
