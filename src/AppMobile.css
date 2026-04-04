@@ -820,6 +820,16 @@ body {
   font-weight: 600;
 }
 
+.m-radio-card-label {
+  flex: 1;
+  min-width: 0;
+  padding-right: 10px;
+}
+
+.m-stage-final {
+  font-weight: 700;
+}
+
 .m-radio-dot {
   width: 14px;
   height: 14px;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './AppMobile.css'
 import LandingPage from './components/LandingPage'
+import { STAGE_OPTIONS } from '../lib/stageLabels.js'
 
 const FLAME_KEY = 'flame_profiles'
 
@@ -419,15 +420,9 @@ function FlameDrawer({ open, profiles, activeProfileId, onSelectProfile, onClose
 }
 
 function StageBottomSheet({ open, draft, onChange, onApply, onClose }) {
-  const options = [
-    'Just matched',
-    'Chatting a few days',
-    'Gone on 1 date',
-    'Gone on 2–3 dates',
-    'Dating regularly',
-  ]
-
   if (!open) return null
+
+  const lastIdx = STAGE_OPTIONS.length - 1
 
   return (
     <>
@@ -435,9 +430,9 @@ function StageBottomSheet({ open, draft, onChange, onApply, onClose }) {
       <div className="m-sheet">
         <div className="m-sheet-drag" />
         <div className="m-sheet-title">Stage</div>
-        <div className="m-sheet-subtitle">Where are you two right now?</div>
+        <div className="m-sheet-subtitle">Where are you two right now? (1 … 5 = deeper commitment)</div>
         <div className="m-sheet-body">
-          {options.map((label, idx) => {
+          {STAGE_OPTIONS.map((label, idx) => {
             const value = idx + 1
             const selected = draft === value
             return (
@@ -447,7 +442,9 @@ function StageBottomSheet({ open, draft, onChange, onApply, onClose }) {
                 onClick={() => onChange(value)}
                 role="button"
               >
-                <span>{label}</span>
+                <span className="m-radio-card-label">
+                  {idx === lastIdx ? <strong className="m-stage-final">{label}</strong> : label}
+                </span>
                 <span className="m-radio-dot" />
               </div>
             )
@@ -782,14 +779,20 @@ export default function AppMobile() {
     setProfiles((prev) => prev.map((p) => p.id === id ? { ...p, starred: !p.starred } : p))
   }, [])
 
-  const selectedStageChip = stageApplied
-  const stageChipLabel = selectedStageChip ? 'Stage ▾' : 'Stage ▾'
+  const stageChipLabel = stageApplied
+    ? `Stage ${stageLevel}/5 ▾`
+    : 'Stage ▾'
+  const stageChipTitle = stageApplied && STAGE_OPTIONS[stageLevel - 1]
+    ? STAGE_OPTIONS[stageLevel - 1]
+    : undefined
   const interestChipLabel = interestApplied ? `Interest ${interestLevel}/5 ▾` : 'Interest ▾'
   // interestLevel valid range: 0–5
 
   const headerStageChip = (
     <button
+      type="button"
       className={`m-chip m-chip-btn ${stageApplied ? 'selected' : ''}`}
+      title={stageChipTitle}
       onClick={() => {
         setStageDraft(stageLevel)
         setSheet('stage')
