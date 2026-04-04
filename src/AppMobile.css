@@ -1117,23 +1117,16 @@ body {
   opacity: 0.88;
 }
 
-/* Main screen: new chat with *current* flame — outlined FAB (drawer FAB is solid purple = new person) */
-.m-fab-rail {
-  position: fixed;
-  z-index: 45;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(var(--mobile-max), 100vw);
-  height: 1px;
-  pointer-events: none;
-}
-
+/*
+ * Main screen: “new thread” FAB — white + purple ring (drawer FAB is solid purple = new *person*).
+ * Pin to the right inset of the centered 430px column: distance from viewport right =
+ * (viewport − columnWidth) / 2 + 14px
+ */
 .m-new-chat-fab {
-  pointer-events: auto;
-  position: absolute;
+  position: fixed;
+  z-index: 55;
   bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 10px));
-  right: 14px;
+  right: calc((100vw - min(var(--mobile-max), 100vw)) / 2 + 14px);
   width: 54px;
   height: 54px;
   border-radius: 50%;

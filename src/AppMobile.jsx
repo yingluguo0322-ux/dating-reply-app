@@ -815,7 +815,8 @@ export default function AppMobile() {
     return <LandingPage onNext={() => setShowLanding(false)} />
   }
 
-  const showNewChatFab = Boolean(activeProfile && !drawerOpen && sheet === null)
+  /* Show on main composer whenever overlays are closed — not only when a Flame is picked (then header can say "Add a name"). */
+  const showNewChatFab = !drawerOpen && sheet === null
 
   return (
     <div className={`mobile-shell${showNewChatFab ? ' mobile-shell--with-new-chat-fab' : ''}`}>
@@ -1153,17 +1154,23 @@ export default function AppMobile() {
       />
 
       {showNewChatFab && (
-        <div className="m-fab-rail">
-          <button
-            type="button"
-            className="m-new-chat-fab"
-            onClick={startNewChatSameFlame}
-            title={`New chat with ${activeProfile.name} — same person, fresh message`}
-            aria-label={`New chat with ${activeProfile.name}, same person`}
-          >
-            <NewChatSameFlameIcon />
-          </button>
-        </div>
+        <button
+          type="button"
+          className="m-new-chat-fab"
+          onClick={startNewChatSameFlame}
+          title={
+            activeProfile
+              ? `New chat with ${activeProfile.name} — same person, fresh message`
+              : 'New draft — pick a name in Flames when you want this tied to someone'
+          }
+          aria-label={
+            activeProfile
+              ? `New chat with ${activeProfile.name}, same person`
+              : 'Start a new draft'
+          }
+        >
+          <NewChatSameFlameIcon />
+        </button>
       )}
     </div>
   )
