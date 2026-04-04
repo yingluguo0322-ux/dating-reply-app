@@ -28,5 +28,6 @@ app.post('/api/generate', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`API server running on http://localhost:${PORT}`)
+  console.log('POST /api/generate supports optional imageBase64 (chat screenshot vision).')
 })
 

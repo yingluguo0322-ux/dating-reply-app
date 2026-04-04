@@ -32,7 +32,36 @@ const MOCK_REPLY = {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-/** Object URL from a file input → base64 + media type for vision API */
+/** Read image file → base64 + media type for vision API (prefer this over blob: URLs). */
+function fileToImagePayload(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const dataUrl = reader.result
+      if (typeof dataUrl !== 'string' || !dataUrl.includes(',')) {
+        reject(new Error('Could not read screenshot'))
+        return
+      }
+      const [, b64] = dataUrl.split(',')
+      const t = (file.type || '').toLowerCase()
+      if (t.includes('heic') || t.includes('heif')) {
+        reject(
+          new Error(
+            'This photo format (HEIC) is not supported for auto-read. Export as JPEG/PNG or paste text instead.'
+          )
+        )
+        return
+      }
+      const mediaType =
+        file.type && /^image\/(jpeg|png|gif|webp)$/i.test(file.type) ? file.type : 'image/jpeg'
+      resolve({ base64: b64, mediaType })
+    }
+    reader.onerror = () => reject(reader.error || new Error('Could not read screenshot'))
+    reader.readAsDataURL(file)
+  })
+}
+
+/** Fallback if we only have an object URL (e.g. legacy state). */
 function blobUrlToImagePayload(blobUrl) {
   return fetch(blobUrl)
     .then((r) => {
@@ -513,16 +542,13 @@ export default function AppMobile() {
   const [screenshotOpen, setScreenshotOpen] = useState(false)
   const [screenshotPreview, setScreenshotPreview] = useState(null)
   const fileInputRef = useRef(null)
-
-  useEffect(() => {
-    return () => {
-      if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
-    }
-  }, [screenshotPreview])
+  /** Keep original File for vision API — avoids broken blob: URLs after revoke / React StrictMode. */
+  const screenshotFileRef = useRef(null)
 
   const handleScreenshotFile = useCallback((file) => {
     if (!file) return
     setGenerationError('')
+    screenshotFileRef.current = file
     const nextUrl = URL.createObjectURL(file)
     setScreenshotPreview((prev) => {
       if (prev) URL.revokeObjectURL(prev)
@@ -581,6 +607,20 @@ export default function AppMobile() {
 
       if (!response.ok) {
         const text = await response.text()
+        let parsed = null
+        try {
+          parsed = JSON.parse(text)
+        } catch {
+          // not JSON
+        }
+        if (parsed?.error === 'theirMessage is required') {
+          throw new Error(
+            'API is an old build (ignores screenshots). Stop and run `npm run dev` once so the server loads vision support.'
+          )
+        }
+        if (parsed?.error) {
+          throw new Error(String(parsed.error))
+        }
         throw new Error(text || 'Failed to generate replies')
       }
 
@@ -607,9 +647,15 @@ export default function AppMobile() {
       let imageMediaType
       if (hasImage) {
         try {
-          const img = await blobUrlToImagePayload(screenshotPreview)
+          const file = screenshotFileRef.current
+          const img = file
+            ? await fileToImagePayload(file)
+            : await blobUrlToImagePayload(screenshotPreview)
           imageBase64 = img.base64
           imageMediaType = img.mediaType
+          if (!String(imageBase64 || '').trim()) {
+            throw new Error('Screenshot encoded empty; try re-uploading the image.')
+          }
         } catch (e) {
           console.error('Screenshot read failed:', e)
           setGenerationError(
@@ -832,6 +878,7 @@ export default function AppMobile() {
                       className="m-upload-remove-overlay m-upload-remove-small"
                       onClick={() => {
                         URL.revokeObjectURL(screenshotPreview)
+                        screenshotFileRef.current = null
                         setScreenshotPreview(null)
                         if (fileInputRef.current) fileInputRef.current.value = ''
                       }}
