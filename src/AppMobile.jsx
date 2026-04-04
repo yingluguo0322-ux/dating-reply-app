@@ -430,7 +430,7 @@ function StageBottomSheet({ open, draft, onChange, onApply, onClose }) {
       <div className="m-sheet">
         <div className="m-sheet-drag" />
         <div className="m-sheet-title">Stage</div>
-        <div className="m-sheet-subtitle">Where are you two right now? (1 … 5 = deeper commitment)</div>
+        <div className="m-sheet-subtitle">Where are you two right now?</div>
         <div className="m-sheet-body">
           {STAGE_OPTIONS.map((label, idx) => {
             const value = idx + 1
@@ -779,20 +779,17 @@ export default function AppMobile() {
     setProfiles((prev) => prev.map((p) => p.id === id ? { ...p, starred: !p.starred } : p))
   }, [])
 
-  const stageChipLabel = stageApplied
-    ? `Stage ${stageLevel}/5 ▾`
-    : 'Stage ▾'
-  const stageChipTitle = stageApplied && STAGE_OPTIONS[stageLevel - 1]
-    ? STAGE_OPTIONS[stageLevel - 1]
-    : undefined
+  const stageChipLabel =
+    stageApplied && STAGE_OPTIONS[stageLevel - 1]
+      ? `${STAGE_OPTIONS[stageLevel - 1]} ▾`
+      : 'Stage ▾'
   const interestChipLabel = interestApplied ? `Interest ${interestLevel}/5 ▾` : 'Interest ▾'
   // interestLevel valid range: 0–5
 
   const headerStageChip = (
     <button
       type="button"
-      className={`m-chip m-chip-btn ${stageApplied ? 'selected' : ''}`}
-      title={stageChipTitle}
+      className={`m-chip m-chip-btn m-chip-stage ${stageApplied ? 'selected' : ''}`}
       onClick={() => {
         setStageDraft(stageLevel)
         setSheet('stage')

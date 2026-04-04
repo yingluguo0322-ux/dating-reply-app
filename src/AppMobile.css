@@ -162,6 +162,16 @@ body {
   cursor: pointer;
 }
 
+/* Stage chip shows full phrase — keep one line in narrow bar */
+.m-chip.m-chip-stage {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 .m-context-sheet-arrow {
   opacity: 0.9;
 }
