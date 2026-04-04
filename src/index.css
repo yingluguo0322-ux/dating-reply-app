@@ -37,7 +37,16 @@
   --font-sans: 'DM Sans', 'PingFang SC', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-html, body {
+html {
+  /* Prevent iOS from inflating text and breaking layout width */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Fill screen on iOS when using svh/dvh below */
+  height: -webkit-fill-available;
+}
+
+html,
+body {
   margin: 0;
   padding: 0;
   background: var(--bg);
@@ -49,8 +58,20 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-#root {
+body {
+  min-height: 100dvh;
   min-height: 100svh;
+  min-height: -webkit-fill-available;
+  overflow-x: clip;
+}
+
+#root {
+  min-height: 100dvh;
+  min-height: 100svh;
+  min-height: -webkit-fill-available;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 button {

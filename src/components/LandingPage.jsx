@@ -40,7 +40,7 @@ const STYLES = `
     border-radius: 14px;
     padding: 1rem 1.2rem;
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 1rem;
+    font-size: 16px;
     font-weight: 400;
     color: #1A1A1A;
     text-align: center;
