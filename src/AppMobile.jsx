@@ -161,6 +161,23 @@ function PencilIconMuted() {
   )
 }
 
+/** Chat bubble + plus — same metaphor as drawer “new flame”, but outlined style on main screen */
+function NewChatSameFlameIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <line x1="12" y1="9" x2="12" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="9" y1="12" x2="15" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function CopyIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -536,8 +553,6 @@ export default function AppMobile() {
   const [replyLoading, setReplyLoading] = useState(false)
   const [generatedReplies, setGeneratedReplies] = useState(MOCK_REPLY)
   const [generationError, setGenerationError] = useState('')
-  /** After user returns from results via pencil, primary CTA reads "Re-generate". */
-  const [ctaRegenerate, setCtaRegenerate] = useState(false)
 
   const [screenshotOpen, setScreenshotOpen] = useState(false)
   const [screenshotPreview, setScreenshotPreview] = useState(null)
@@ -703,8 +718,24 @@ export default function AppMobile() {
   const backToInputForEdit = useCallback(() => {
     setPhase('input')
     setGenerationError('')
-    setCtaRegenerate(true)
   }, [])
+
+  /** Clear draft + results; keep the same Flame selected (not “new person” — that’s the drawer FAB). */
+  const startNewChatSameFlame = useCallback(() => {
+    genReqIdRef.current += 1
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
+    screenshotFileRef.current = null
+    setScreenshotPreview(null)
+    setScreenshotOpen(false)
+    setReplyMsg('')
+    setMyIdea('')
+    setGenerationError('')
+    setGeneratedReplies(MOCK_REPLY)
+    setReplyLoading(false)
+    setPhase('input')
+    setReplyStyles(['playful'])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }, [screenshotPreview])
 
   // Keep bubbles in sync with selected styles during results state.
   const displayBubbles = useMemo(() => {
@@ -784,8 +815,10 @@ export default function AppMobile() {
     return <LandingPage onNext={() => setShowLanding(false)} />
   }
 
+  const showNewChatFab = Boolean(activeProfile && !drawerOpen && sheet === null)
+
   return (
-    <div className="mobile-shell">
+    <div className={`mobile-shell${showNewChatFab ? ' mobile-shell--with-new-chat-fab' : ''}`}>
       <div className="mobile-scroll">
         <div className="m-header">
           <TLogoButton
@@ -968,11 +1001,7 @@ export default function AppMobile() {
               disabled={!canGenerate || activeLoading}
               onClick={startGenerate}
             >
-              {activeLoading
-                ? 'Generating...'
-                : ctaRegenerate
-                  ? 'Re-generate'
-                  : 'Generate'}
+              {activeLoading ? 'Generating...' : 'Generate'}
             </button>
           </div>
         ) : (
@@ -1122,6 +1151,20 @@ export default function AppMobile() {
         }}
         onClose={() => setSheet(null)}
       />
+
+      {showNewChatFab && (
+        <div className="m-fab-rail">
+          <button
+            type="button"
+            className="m-new-chat-fab"
+            onClick={startNewChatSameFlame}
+            title={`New chat with ${activeProfile.name} — same person, fresh message`}
+            aria-label={`New chat with ${activeProfile.name}, same person`}
+          >
+            <NewChatSameFlameIcon />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

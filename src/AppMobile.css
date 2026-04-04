@@ -26,6 +26,11 @@ body {
   position: relative;
 }
 
+/* Room for fixed “new chat (same person)” FAB above bottom safe area */
+.mobile-shell--with-new-chat-fab .mobile-scroll {
+  padding-bottom: 84px;
+}
+
 .mobile-scroll {
   flex: 1;
   overflow-y: auto;
@@ -1110,6 +1115,46 @@ body {
 
 .m-drawer-user-fab:hover {
   opacity: 0.88;
+}
+
+/* Main screen: new chat with *current* flame — outlined FAB (drawer FAB is solid purple = new person) */
+.m-fab-rail {
+  position: fixed;
+  z-index: 45;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(var(--mobile-max), 100vw);
+  height: 1px;
+  pointer-events: none;
+}
+
+.m-new-chat-fab {
+  pointer-events: auto;
+  position: absolute;
+  bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 10px));
+  right: 14px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #8E2A8A;
+  color: #8E2A8A;
+  box-shadow: 0 4px 18px rgba(142, 42, 138, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.12s ease, box-shadow 0.15s ease;
+}
+
+.m-new-chat-fab:hover {
+  box-shadow: 0 6px 22px rgba(142, 42, 138, 0.3);
+}
+
+.m-new-chat-fab:active {
+  transform: scale(0.96);
 }
 
 /* Long-press context menu */
