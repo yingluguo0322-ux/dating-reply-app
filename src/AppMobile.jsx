@@ -670,8 +670,22 @@ export default function AppMobile() {
     [replyStyles]
   )
 
+  const addProfile = useCallback((name) => {
+    const id = `p-${Date.now()}`
+    setProfiles((prev) => [...prev, { id, name, starred: false, createdAt: Date.now(), history: [] }])
+    setActiveProfileId(id)
+  }, [])
+
+  const renameProfile = useCallback((id, newName) => {
+    setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, name: newName } : p)))
+  }, [])
+
   const fetchAiReplies = useCallback(
-    async ({ theirMessage, imageBase64, imageMediaType }) => {
+    async ({ theirMessage, imageBase64, imageMediaType, interestLevelOverride }) => {
+      const il =
+        interestLevelOverride !== undefined && interestLevelOverride !== null
+          ? interestLevelOverride
+          : interestLevel
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -682,7 +696,7 @@ export default function AppMobile() {
           imageMediaType: imageMediaType || undefined,
           styles: replyStyles,
           stageLevel,
-          interestLevel,
+          interestLevel: il,
           systemPrompt: AI_SYSTEM_PROMPT_APPEND,
         }),
       })
@@ -752,12 +766,47 @@ export default function AppMobile() {
       setReplyLoading(true)
       setGenerationError('')
 
+      let effectiveTheirMessage = textForValidation.trim()
+      let effectiveInterest = interestLevel
+
+      if (hasImage && imageBase64) {
+        try {
+          const exRes = await fetch('/api/extract-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64, imageMediaType }),
+          })
+          const ex = await exRes.json()
+          if (!exRes.ok) throw new Error(ex.error || 'extract-chat failed')
+          if (ex.partnerDisplayName && String(ex.partnerDisplayName).trim()) {
+            const n = String(ex.partnerDisplayName).trim()
+            if (activeProfileId) {
+              renameProfile(activeProfileId, n)
+            } else {
+              addProfile(n)
+            }
+          }
+          if (typeof ex.suggestedInterest0to5 === 'number') {
+            effectiveInterest = Math.max(0, Math.min(5, Math.round(ex.suggestedInterest0to5)))
+            setInterestLevel(effectiveInterest)
+            setInterestApplied(true)
+          }
+          if (!effectiveTheirMessage && ex.theirLastMessage) {
+            effectiveTheirMessage = String(ex.theirLastMessage).trim()
+            setReplyMsg(effectiveTheirMessage)
+          }
+        } catch (exErr) {
+          console.warn('extract-chat:', exErr)
+        }
+      }
+
       const startedAt = Date.now()
       try {
         const replies = await fetchAiReplies({
-          theirMessage: textForValidation.trim(),
+          theirMessage: effectiveTheirMessage,
           imageBase64,
           imageMediaType,
+          interestLevelOverride: effectiveInterest,
         })
         if (reqId !== genReqIdRef.current) return
         setGeneratedReplies(replies)
@@ -774,7 +823,15 @@ export default function AppMobile() {
         if (reqId === genReqIdRef.current) setReplyLoading(false)
       }
     },
-    [fetchAiReplies, replyStyles, screenshotPreview]
+    [
+      activeProfileId,
+      addProfile,
+      fetchAiReplies,
+      interestLevel,
+      renameProfile,
+      replyStyles,
+      screenshotPreview,
+    ]
   )
 
   const startGenerate = useCallback(() => {
@@ -830,19 +887,9 @@ export default function AppMobile() {
     }
   }, [profiles])
 
-  const addProfile = useCallback((name) => {
-    const id = `p-${Date.now()}`
-    setProfiles((prev) => [...prev, { id, name, starred: false, createdAt: Date.now(), history: [] }])
-    setActiveProfileId(id)
-  }, [])
-
   const deleteProfile = useCallback((id) => {
     setProfiles((prev) => prev.filter((p) => p.id !== id))
     setActiveProfileId((prev) => (prev === id ? null : prev))
-  }, [])
-
-  const renameProfile = useCallback((id, newName) => {
-    setProfiles((prev) => prev.map((p) => p.id === id ? { ...p, name: newName } : p))
   }, [])
 
   const toggleStar = useCallback((id) => {

@@ -2,6 +2,7 @@
 import 'dotenv/config'
 import express from 'express'
 import { generateReplies, getProvider } from '../lib/aiProvider.js'
+import { extractChatFromScreenshot } from '../lib/extractChat.js'
 
 const app = express()
 app.use(express.json({ limit: '12mb' }))
@@ -26,8 +27,20 @@ app.post('/api/generate', async (req, res) => {
   }
 })
 
+app.post('/api/extract-chat', async (req, res) => {
+  try {
+    const result = await extractChatFromScreenshot(req.body || {})
+    return res.json(result)
+  } catch (error) {
+    const msg = String(error?.message || 'Unexpected server error')
+    const status = msg.includes('required') ? 400 : msg.includes('No API key') ? 500 : 502
+    return res.status(status).json({ error: msg })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`API server running on http://localhost:${PORT}`)
   console.log('POST /api/generate supports optional imageBase64 (chat screenshot vision).')
+  console.log('POST /api/extract-chat reads a screenshot and returns JSON metadata.')
 })
 
