@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './AppMobile.css'
 import LandingPage from './components/LandingPage'
 import { STAGE_OPTIONS } from '../lib/stageLabels.js'
+import brandLogo from './assets/logo-purple.svg'
 
 const FLAME_KEY = 'flame_profiles'
 
@@ -187,7 +188,7 @@ function loadProfiles() {
 function TLogoButton({ onClick }) {
   return (
     <button className="m-t-btn" onClick={onClick} aria-label="Open Flame Files">
-      <span className="m-t-letter">T</span>
+      <img className="m-t-logo" src={brandLogo} alt="TYPE logo" />
     </button>
   )
 }
