@@ -28,8 +28,78 @@ const MOCK_REPLY = {
   flirty: "You can't just say that and expect me to act normal about it",
   witty: 'Bold of you to assume I know how to respond without overthinking it for 20 minutes',
   charming: "That's genuinely one of the nicest things anyone's said to me in a while",
-  sincere: 'I really appreciate you saying that — means more than you know',
+  sincere: 'I really appreciate you saying that, it means more than you know',
 }
+
+/** Appended to server default system prompt (see lib/aiProvider.js DATING_SYSTEM_PROMPT). */
+const AI_SYSTEM_PROMPT_APPEND = `Examples of good replies by style:
+
+Playful:
+- "you're funny" → "took you this long to notice? 😭"
+- "miss you" → "prove it then"
+
+Flirty:
+- "what are you doing tonight" → "depends on who's asking 👀"
+- "you're cute" → "dangerous thing to tell me ngl"
+
+Witty:
+- "i hate you" → "love you too bestie 🙄"
+- "stop being so charming" → "tried, didn't work out"
+
+Chic:
+- "i like you" → "good taste"
+- "when can i see you" → "when you figure out how to ask properly"
+
+Sincere:
+- "you always know what to say" → "only with you honestly"
+- "i had so much fun today" → "same, already thinking about next time"
+
+Additional style techniques for more natural flirty replies:
+
+Expressive sounds (use when reacting with excitement or surprise):
+- awwwww / ohhhhhh / wowwwww / omggggg / ayeeeeee / woohooooo
+
+Terms of endearment (use sparingly, only when interest level is 4-5):
+- babe / dear / darling / sweetheart
+
+Compliment phrases:
+- "that's so cute/lovely/adorable"
+- "you're so sweet/funny/charming"
+
+Express emotions naturally:
+- "so jealous rn"
+- "lowkey blushing"
+- "omg stop 😭"
+
+Create association (make them feel you want to be there):
+- "wish i were there with u"
+- "need to be there fr"
+
+Scenario examples:
+- They share their food → "awww looks so good 🤤 wish i were there so we could eat together 🥺"
+- They share their pet → "omg so cute!! jealous she gets your hugs every day 🥺"
+- They say they're at home → "sounds so chill, wish i could be there with u ngl"
+
+Emoji hints for flirty tone: 🥺😊🥰😈👀
+
+More witty reply examples using "bold":
+- They say something unexpected → "bold of you to assume I'm not overthinking this 😭"
+- They make a big claim → "bold move ngl 👀"
+- They say something forward → "that's bold" (leave it there, no explanation)
+
+Note: "bold of you to assume..." is a real phrase native English speakers use, especially online. Keep it short; never more than 8 words when using this structure.
+
+Important: Always match the reply to the actual message context.
+- "you always make me smile" → respond with warmth or playful deflection, NOT with "dangerous"
+- Only use "dangerous" when they say something bold, flirty or forward
+- Never force a word or phrase that doesn't fit the context
+
+Critical rule for "bold" usage:
+- NEVER use the full phrase "Bold of you to assume I know how to respond without overthinking it for 20 minutes"; it's too long
+- When using "bold", keep the entire reply under 8 words maximum
+- Good examples: "bold move ngl 👀" / "that's bold" / "bold of you to assume 😭"
+- Bad example: "Bold of you to assume I know how to respond without overthinking it for 20 minutes"; WAY too long, never do this
+- The word "bold" should feel casual and short, not like a full sentence`
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -162,7 +232,7 @@ function PencilIconMuted() {
   )
 }
 
-/** Chat bubble + plus — same metaphor as drawer “new flame”, but outlined style on main screen */
+/** Chat bubble + plus, same metaphor as drawer “new flame”, but outlined style on main screen */
 function NewChatSameFlameIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -554,7 +624,7 @@ export default function AppMobile() {
   const [screenshotOpen, setScreenshotOpen] = useState(false)
   const [screenshotPreview, setScreenshotPreview] = useState(null)
   const fileInputRef = useRef(null)
-  /** Keep original File for vision API — avoids broken blob: URLs after revoke / React StrictMode. */
+  /** Keep original File for vision API; avoids broken blob: URLs after revoke / React StrictMode. */
   const screenshotFileRef = useRef(null)
 
   const handleScreenshotFile = useCallback((file) => {
@@ -610,10 +680,10 @@ export default function AppMobile() {
           myIdea,
           imageBase64: imageBase64 || undefined,
           imageMediaType: imageMediaType || undefined,
-          styles: STYLE_KEYS,
+          styles: replyStyles,
           stageLevel,
           interestLevel,
-          systemPrompt: '',
+          systemPrompt: AI_SYSTEM_PROMPT_APPEND,
         }),
       })
 
@@ -644,7 +714,7 @@ export default function AppMobile() {
         ...data.replies,
       }
     },
-    [interestLevel, myIdea, stageLevel]
+    [interestLevel, myIdea, replyStyles, stageLevel]
   )
 
   const runGenerate = useCallback(
@@ -717,7 +787,7 @@ export default function AppMobile() {
     setGenerationError('')
   }, [])
 
-  /** Clear draft + results; keep the same Flame selected (not “new person” — that’s the drawer FAB). */
+  /** Clear draft + results; keep the same Flame selected (not “new person”, that’s the drawer FAB). */
   const startNewChatSameFlame = useCallback(() => {
     genReqIdRef.current += 1
     if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
@@ -815,7 +885,7 @@ export default function AppMobile() {
     return <LandingPage onNext={() => setShowLanding(false)} />
   }
 
-  /* Show on main composer whenever overlays are closed — not only when a Flame is picked (then header can say "Add a name"). */
+  /* Show on main composer whenever overlays are closed, not only when a Flame is picked (then header can say "Add a name"). */
   const showNewChatFab = !drawerOpen && sheet === null
 
   return (
@@ -902,7 +972,7 @@ export default function AppMobile() {
                 <div className="m-message-with-thumb">
                   <textarea
                     className="m-textarea m-textarea-with-thumb"
-                    placeholder="Optional — we read their message from your screenshot"
+                    placeholder="Optional. We read their message from your screenshot"
                     value={replyMsg}
                     onChange={(e) => setReplyMsg(e.target.value)}
                   />
@@ -958,12 +1028,12 @@ export default function AppMobile() {
                 value={myIdea}
                 onChange={(e) => setMyIdea(e.target.value)}
               />
-              <div className="m-idea-hint">Leave blank — AI will craft something from scratch</div>
+              <div className="m-idea-hint">Leave blank. AI will craft something from scratch</div>
             </div>
 
             <div className="m-card">
               <div className="m-card-title-row">
-                <div className="m-card-title">STYLE — Up to 3</div>
+                <div className="m-card-title">STYLE · Up to 3</div>
                 <div style={{ width: 28 }} />
               </div>
 
@@ -1160,8 +1230,8 @@ export default function AppMobile() {
           onClick={startNewChatSameFlame}
           title={
             activeProfile
-              ? `New chat with ${activeProfile.name} — same person, fresh message`
-              : 'New draft — pick a name in Flames when you want this tied to someone'
+              ? `New chat with ${activeProfile.name}, same person, fresh message`
+              : 'New draft. Pick a name in Flames when you want this tied to someone'
           }
           aria-label={
             activeProfile

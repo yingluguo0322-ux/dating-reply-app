@@ -289,7 +289,7 @@ export default function LandingPage({ onNext }) {
         textAlign: 'center',
       }}>
 
-        {/* Progress dots — dot 1 is clickable to go back */}
+        {/* Progress dots; dot 1 is clickable to go back */}
         <div style={{ display:'flex', gap:6, alignItems:'center', marginBottom:'2.4rem', animation:'slideDown 0.5s ease 0s both' }}>
           <span
             onClick={() => setStep(1)}
@@ -334,7 +334,7 @@ export default function LandingPage({ onNext }) {
           Helps us tailor your reply style
         </p>
 
-        {/* Name input — shakes if empty on submit */}
+        {/* Name input; shakes if empty on submit */}
         <div
           key={shakeName ? 'shake-name' : 'name'}
           className={shakeName ? 'lp-shake' : ''}
@@ -351,7 +351,7 @@ export default function LandingPage({ onNext }) {
           />
         </div>
 
-        {/* Gender cards — shake wrapper if none selected on submit */}
+        {/* Gender cards; shake wrapper if none selected on submit */}
         <div
           key={shakeGender ? 'shake-gender' : 'gender'}
           className={shakeGender ? 'lp-shake' : ''}

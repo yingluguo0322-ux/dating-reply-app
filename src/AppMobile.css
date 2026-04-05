@@ -162,7 +162,7 @@ body {
   cursor: pointer;
 }
 
-/* Stage chip shows full phrase — keep one line in narrow bar */
+/* Stage chip shows full phrase; keep one line in narrow bar */
 .m-chip.m-chip-stage {
   min-width: 0;
   overflow: hidden;
@@ -732,7 +732,7 @@ body {
 
 .m-idea-textarea {
   min-height: 72px;
-  font-size: 16px;
+  font-size: 13px;
   max-width: 100%;
 }
 
@@ -1151,7 +1151,7 @@ body {
 }
 
 /*
- * Main screen: “new thread” FAB — white + purple ring (drawer FAB is solid purple = new *person*).
+ * Main screen: “new thread” FAB, white + purple ring (drawer FAB is solid purple = new *person*).
  * Pin to the right inset of the centered 430px column: distance from viewport right =
  * (viewport − columnWidth) / 2 + 14px
  */
