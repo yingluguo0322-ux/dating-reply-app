@@ -31,13 +31,68 @@ const STYLE_COLORS = {
   sincere: { macaron: '#A8C5E8', chipBorder: '#78A8D0', text: '#1A3D6B', phoneBg: '#E8F1FA' },
 }
 
-// Fallback replies when API is unavailable.
+// Fallback pools when API fails or returns empty for a style (rotate so it never feels "stuck").
+const MOCK_REPLY_POOLS = {
+  playful: [
+    'Okay I was NOT expecting that but honestly... same energy 😭',
+    'wait that was smooth ngl',
+    'you’re trying to make me smile on purpose aren’t you',
+  ],
+  flirty: [
+    "You can't just say that and expect me to act normal about it",
+    'dangerous energy but I’m listening 👀',
+    'you’re doing a lot with one sentence huh',
+  ],
+  witty: [
+    "Bold of you, my brain's still buffering lol",
+    'my router’s still loading a comeback',
+    'that’s a lot of power for one text',
+  ],
+  charming: [
+    "hm okay, I'll give you that one",
+    'fair, that line earned it',
+    'alright, credit where it’s due',
+    'noted. that was clean.',
+    'I’ll allow it, that was good',
+  ],
+  sincere: [
+    'that actually meant a lot, fr, thank you',
+    'genuinely appreciate you saying that',
+    'that stuck with me more than I expected, thanks',
+    'thank you, that landed softer than you probably know',
+  ],
+}
+
+function pickRandomMockLine(styleKey) {
+  const pool = MOCK_REPLY_POOLS[styleKey] || MOCK_REPLY_POOLS.playful
+  return pool[Math.floor(Math.random() * pool.length)]
+}
+
+function fullRandomFallbackReplies() {
+  return Object.fromEntries(STYLE_KEYS.map((k) => [k, pickRandomMockLine(k)]))
+}
+
+/** Defaults for first paint / chip placeholders (deterministic enough for tests). */
 const MOCK_REPLY = {
-  playful: 'Okay I was NOT expecting that but honestly... same energy 😭',
-  flirty: "You can't just say that and expect me to act normal about it",
-  witty: "Bold of you — my brain's still buffering lol",
-  charming: "hm okay — I'll give you that one",
-  sincere: 'that actually meant a lot — fr, thank you',
+  playful: MOCK_REPLY_POOLS.playful[0],
+  flirty: MOCK_REPLY_POOLS.flirty[0],
+  witty: MOCK_REPLY_POOLS.witty[0],
+  charming: MOCK_REPLY_POOLS.charming[0],
+  sincere: MOCK_REPLY_POOLS.sincere[0],
+}
+
+function mergeApiRepliesIntoState(dataReplies, requestedStyles) {
+  const out = {}
+  for (const k of STYLE_KEYS) {
+    const raw = dataReplies[k]
+    const v = typeof raw === 'string' ? raw.trim() : ''
+    if (requestedStyles.includes(k)) {
+      out[k] = v || pickRandomMockLine(k)
+    } else {
+      out[k] = v || MOCK_REPLY[k]
+    }
+  }
+  return out
 }
 
 /** Appended to server default system prompt (see lib/aiProvider.js DATING_SYSTEM_PROMPT). */
@@ -104,7 +159,38 @@ Sincere:
 5. If it feels forced or scripted, DELETE IT
 6. Use punctuation and emoji naturally, not as crutches
 7. Create a response unique to THIS moment, THIS person
+8. Never reuse these demo lines verbatim or with tiny tweaks: "hm okay, I'll give you that one", "that actually meant a lot, fr, thank you". Always invent new wording.
+9. Do not use em dash (—) or en dash (–) between phrases; use a comma or split sentences (same as the server: no long-dash connectors in user-facing replies).
 `
+
+/** When onboarding gender is male: steer tone toward a thoughtful gentleman (appended only then). */
+const AI_SYSTEM_PROMPT_MALE_VIEWER = `
+**Viewer profile: the user is a man.** You are drafting replies **he** would send. Voice = **gentleman**: sincere, considerate, emotionally aware, never sleazy or careless.
+
+- Be warm and attentive; show you listened, without sounding rehearsed or overly formal.
+- **No crude sexual humor, no random innuendo, no "locker room" vibe.** Flirty/Playful still stays **classy, consent-aware, and inviting**, charm not pressure.
+- **Never mention parents or family** (no "my mom says...", "my dad thinks...", "my parents..."), omit family entirely.
+- No negging, no manipulative pickup patterns, no backhanded compliments.
+- Do not steer the chat toward explicit topics unless their messages already clearly did, and even then stay respectful and proportional.
+- Avoid "alpha" posturing, put-downs of others, or one-upping; stay grounded and kind.
+- Sincere style especially: understated care beats grand speeches.
+`
+
+function viewerGenderFromStorage() {
+  try {
+    const p = JSON.parse(localStorage.getItem('user_profile') || 'null')
+    return p?.gender ?? null
+  } catch {
+    return null
+  }
+}
+
+function buildSystemPromptForViewer() {
+  const g = viewerGenderFromStorage()
+  const parts = [AI_SYSTEM_PROMPT_APPEND]
+  if (g === 'male') parts.push(AI_SYSTEM_PROMPT_MALE_VIEWER)
+  return parts.join('\n\n').trim()
+}
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const MAX_SCREENSHOT_WIDTH = 1280
@@ -833,7 +919,7 @@ export default function AppMobile() {
           styles: replyStyles,
           stageLevel,
           interestLevel: il,
-          systemPrompt: AI_SYSTEM_PROMPT_APPEND,
+          systemPrompt: buildSystemPromptForViewer(),
         }),
       })
 
@@ -859,10 +945,7 @@ export default function AppMobile() {
       const data = await response.json()
       if (!data?.replies) throw new Error('API returned invalid reply format')
 
-      return {
-        ...MOCK_REPLY,
-        ...data.replies,
-      }
+      return mergeApiRepliesIntoState(data.replies, replyStyles)
     },
     [interestLevel, myIdea, replyStyles, stageLevel]
   )
@@ -965,9 +1048,9 @@ export default function AppMobile() {
         setGeneratedReplies(replies)
       } catch (error) {
         if (reqId !== genReqIdRef.current) return
-        // Keep UI usable even when API fails.
-        finalReplies = MOCK_REPLY
-        setGeneratedReplies(MOCK_REPLY)
+        // Keep UI usable even when API fails (rotating placeholders, not one fixed pair).
+        finalReplies = fullRandomFallbackReplies()
+        setGeneratedReplies(finalReplies)
         const errMsg = String(error?.message || 'Unknown error')
         setGenerationError(`Fallback: ${errMsg}`)
         console.error('AI generation failed:', error)
