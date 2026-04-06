@@ -27,85 +27,85 @@ const STYLE_COLORS = {
 const MOCK_REPLY = {
   playful: 'Okay I was NOT expecting that but honestly... same energy 😭',
   flirty: "You can't just say that and expect me to act normal about it",
-  witty: 'Bold of you to assume I know how to respond without overthinking it for 20 minutes',
+  witty: "Bold of you — my brain's still buffering lol",
   charming: "That's genuinely one of the nicest things anyone's said to me in a while",
-  sincere: 'I really appreciate you saying that, it means more than you know',
+  sincere: 'that actually meant a lot — fr, thank you',
 }
 
 /** Appended to server default system prompt (see lib/aiProvider.js DATING_SYSTEM_PROMPT). */
-const AI_SYSTEM_PROMPT_APPEND = `Examples of good replies by style:
+const AI_SYSTEM_PROMPT_APPEND = `
+You are a dating reply assistant. Your job is to generate ORIGINAL,
+CREATIVE replies that match the user's selected style.
+
+**CRITICAL: Do NOT repeat or paraphrase examples you've seen.
+Generate fresh, unique responses every time.**
+
+Style Guidelines (PRINCIPLES, not examples):
 
 Playful:
-- "you're funny" → "took you this long to notice? 😭"
-- "miss you" → "prove it then"
+- Light, teasing tone without being mean
+- Use humor and wit to show interest
+- Keep them guessing with playful challenges
+- Show confidence through humor
+- Emoji: sparingly, for emphasis only
 
 Flirty:
-- "what are you doing tonight" → "depends on who's asking 👀"
-- "you're cute" → "dangerous thing to tell me ngl"
+- Warm and intriguing without being too forward
+- Create curiosity or tension
+- Show genuine interest with a touch of mystery
+- Subtle double meanings are okay
+- Make them want to continue the conversation
 
 Witty:
-- "i hate you" → "love you too bestie 🙄"
-- "stop being so charming" → "tried, didn't work out"
+- Clever wordplay and smart observations
+- Show intelligence through humor
+- Subvert expectations with clever replies
+- Be funny but also show emotional depth
+- Avoid trying too hard—let wit flow naturally
+- Short and conversational—like normal typing in chat, not a long polished monologue
 
 Chic:
-- "i like you" → "good taste"
-- "when can i see you" → "when you figure out how to ask properly"
+- Sophisticated, slightly aloof
+- Short, confident responses
+- Show good taste and high standards
+- Elegant simplicity over elaborate explanations
+- Be intriguing through understated elegance
 
 Sincere:
-- "you always know what to say" → "only with you honestly"
-- "i had so much fun today" → "same, already thinking about next time"
+- Genuine and authentic emotion
+- Show vulnerability appropriately
+- Direct and honest communication
+- Use empathy to connect
+- Build real emotional depth
+- Avoid canned, formal gratitude lines (especially long stock thank-yous); say it in a fresh, real way each time.
 
-Additional style techniques for more natural flirty replies:
+**How it should read (all styles):**
+- Like a real person typing in chat: spoken, relaxed, not formal prose or a speech.
+- You may use brief reaction / tone bits when they fit (e.g. hmm, huh, nah, oof)—lightly, not in every line.
+- Common text abbreviations and casual slang are fine when they match the thread language and vibe (e.g. English: wdym, ngl, idk, tbh). Never stuff them in; never sound like a glossary.
+- Invent or choose your own wording each time—do not copy fixed slang lists from here.
+- Match the language they are using (if the chat is Chinese, use natural Chinese chat habits; don't default to English netspeak).
+- Chic / Sincere may use less slang and fewer abbreviations, but should still read like a real text, not a formal letter.
 
-Expressive sounds (use when reacting with excitement or surprise):
-- awwwww / ohhhhhh / wowwwww / omggggg / ayeeeeee / woohooooo
-
-Terms of endearment (use sparingly, only when interest level is 4-5):
-- babe / dear / darling / sweetheart
-
-Compliment phrases:
-- "that's so cute/lovely/adorable"
-- "you're so sweet/funny/charming"
-
-Express emotions naturally:
-- "so jealous rn"
-- "lowkey blushing"
-- "omg stop 😭"
-
-Create association (make them feel you want to be there):
-- "wish i were there with u"
-- "need to be there fr"
-
-Scenario examples:
-- They share their food → "awww looks so good 🤤 wish i were there so we could eat together 🥺"
-- They share their pet → "omg so cute!! jealous she gets your hugs every day 🥺"
-- They say they're at home → "sounds so chill, wish i could be there with u ngl"
-
-Emoji hints for flirty tone: 🥺😊🥰😈👀
-
-More witty reply examples using "bold":
-- They say something unexpected → "bold of you to assume I'm not overthinking this 😭"
-- They make a big claim → "bold move ngl 👀"
-- They say something forward → "that's bold" (leave it there, no explanation)
-
-Note: "bold of you to assume..." is a real phrase native English speakers use, especially online. Keep it short; never more than 8 words when using this structure.
-
-Important: Always match the reply to the actual message context.
-- "you always make me smile" → respond with warmth or playful deflection, NOT with "dangerous"
-- Only use "dangerous" when they say something bold, flirty or forward
-- Never force a word or phrase that doesn't fit the context
-
-Critical rule for "bold" usage:
-- NEVER use the full phrase "Bold of you to assume I know how to respond without overthinking it for 20 minutes"; it's too long
-- When using "bold", keep the entire reply under 8 words maximum
-- Good examples: "bold move ngl 👀" / "that's bold" / "bold of you to assume 😭"
-- Bad example: "Bold of you to assume I know how to respond without overthinking it for 20 minutes"; WAY too long, never do this
-- The word "bold" should feel casual and short, not like a full sentence`
+**Key Rules for ALL styles:**
+1. Respond directly to what they said (not generic)
+2. Show personality through word choice and tone
+3. Keep it natural—no over-the-top language
+4. Match energy level: if they're casual, be casual
+5. If it feels forced or scripted, DELETE IT
+6. Use punctuation and emoji naturally, not as crutches
+7. Create a response unique to THIS moment, THIS person
+`
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+const MAX_SCREENSHOT_WIDTH = 1280
+const MAX_SCREENSHOT_HEIGHT = 1600
+const TARGET_SCREENSHOT_BYTES = 2_400_000
+const MIN_SCREENSHOT_QUALITY = 0.45
+const LONG_SCREENSHOT_RATIO = 2.25
+const NOTICE_LARGE_BYTES = 3_000_000
 
-/** Read image file → base64 + media type for vision API (prefer this over blob: URLs). */
-function fileToImagePayload(file) {
+function readBlobAsDataUrl(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onloadend = () => {
@@ -114,22 +114,152 @@ function fileToImagePayload(file) {
         reject(new Error('Could not read screenshot'))
         return
       }
-      const [, b64] = dataUrl.split(',')
-      const t = (file.type || '').toLowerCase()
-      if (t.includes('heic') || t.includes('heif')) {
-        reject(
-          new Error(
-            'This photo format (HEIC) is not supported for auto-read. Export as JPEG/PNG or paste text instead.'
-          )
-        )
-        return
-      }
-      const mediaType =
-        file.type && /^image\/(jpeg|png|gif|webp)$/i.test(file.type) ? file.type : 'image/jpeg'
-      resolve({ base64: b64, mediaType })
+      resolve(dataUrl)
     }
     reader.onerror = () => reject(reader.error || new Error('Could not read screenshot'))
-    reader.readAsDataURL(file)
+    reader.readAsDataURL(blob)
+  })
+}
+
+function loadImageElement(blob) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(img)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Could not decode screenshot'))
+    }
+    img.src = url
+  })
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('Could not compress screenshot'))
+          return
+        }
+        resolve(blob)
+      },
+      type,
+      quality
+    )
+  })
+}
+
+async function compressScreenshotBlob(blob) {
+  const img = await loadImageElement(blob)
+  const originalWidth = img.naturalWidth
+  const originalHeight = img.naturalHeight
+  const scale = Math.min(
+    1,
+    MAX_SCREENSHOT_WIDTH / Math.max(1, originalWidth),
+    MAX_SCREENSHOT_HEIGHT / Math.max(1, originalHeight)
+  )
+
+  let width = Math.max(1, Math.round(originalWidth * scale))
+  let height = Math.max(1, Math.round(originalHeight * scale))
+  let bestBlob = blob
+  let bestType = blob.type && /^image\/(jpeg|png|gif|webp)$/i.test(blob.type) ? blob.type : 'image/jpeg'
+  const isLongScreenshot = originalHeight / Math.max(1, originalWidth) >= LONG_SCREENSHOT_RATIO
+
+  while (true) {
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+
+    const ctx = canvas.getContext('2d', { alpha: false })
+    if (!ctx) throw new Error('Canvas is unavailable for screenshot compression')
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(0, 0, width, height)
+    ctx.drawImage(img, 0, 0, width, height)
+
+    for (const quality of [0.82, 0.74, 0.66, 0.58, MIN_SCREENSHOT_QUALITY]) {
+      const candidate = await canvasToBlob(canvas, 'image/jpeg', quality)
+      if (candidate.size < bestBlob.size) {
+        bestBlob = candidate
+        bestType = 'image/jpeg'
+      }
+      if (candidate.size <= TARGET_SCREENSHOT_BYTES) {
+        return {
+          blob: candidate,
+          mediaType: 'image/jpeg',
+          meta: {
+            originalBytes: blob.size,
+            compressedBytes: candidate.size,
+            originalWidth,
+            originalHeight,
+            width,
+            height,
+            isLongScreenshot,
+          },
+        }
+      }
+    }
+
+    if (width <= 720 && height <= 960) {
+      return {
+        blob: bestBlob,
+        mediaType: bestType || 'image/jpeg',
+        meta: {
+          originalBytes: blob.size,
+          compressedBytes: bestBlob.size,
+          originalWidth,
+          originalHeight,
+          width,
+          height,
+          isLongScreenshot,
+        },
+      }
+    }
+
+    width = Math.max(1, Math.round(width * 0.85))
+    height = Math.max(1, Math.round(height * 0.85))
+  }
+}
+
+function formatMb(bytes) {
+  return `${(bytes / (1024 * 1024)).toFixed(bytes >= 10_000_000 ? 0 : 1)}MB`
+}
+
+function buildScreenshotNotice(meta) {
+  if (!meta) return ''
+  const notes = []
+  if (meta.originalBytes >= NOTICE_LARGE_BYTES || meta.compressedBytes < meta.originalBytes) {
+    notes.push(`Large screenshots are auto-compressed before upload (${formatMb(meta.originalBytes)} -> ${formatMb(meta.compressedBytes)}).`)
+  }
+  if (meta.isLongScreenshot) {
+    notes.push('For best accuracy, crop to the top name bar and the latest few messages only.')
+  }
+  return notes.join(' ')
+}
+
+/** Read image file → base64 + media type for vision API (prefer this over blob: URLs). */
+function fileToImagePayload(file) {
+  return new Promise((resolve, reject) => {
+    const t = (file.type || '').toLowerCase()
+    if (t.includes('heic') || t.includes('heif')) {
+      reject(
+        new Error(
+          'This photo format (HEIC) is not supported for auto-read. Export as JPEG/PNG or paste text instead.'
+        )
+      )
+      return
+    }
+
+    compressScreenshotBlob(file)
+      .then(async ({ blob, mediaType, meta }) => {
+        const dataUrl = await readBlobAsDataUrl(blob)
+        const [, b64] = dataUrl.split(',')
+        resolve({ base64: b64, mediaType, meta })
+      })
+      .catch(reject)
   })
 }
 
@@ -140,36 +270,18 @@ function blobUrlToImagePayload(blobUrl) {
       if (!r.ok) throw new Error('Could not read screenshot')
       return r.blob()
     })
-    .then(
-      (blob) =>
-        new Promise((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onloadend = () => {
-            const dataUrl = reader.result
-            if (typeof dataUrl !== 'string' || !dataUrl.includes(',')) {
-              reject(new Error('Could not read screenshot'))
-              return
-            }
-            const [, b64] = dataUrl.split(',')
-            const t = (blob.type || '').toLowerCase()
-            if (t.includes('heic') || t.includes('heif')) {
-              reject(
-                new Error(
-                  'This photo format (HEIC) is not supported for auto-read. Export as JPEG/PNG or paste text instead.'
-                )
-              )
-              return
-            }
-            const mediaType =
-              blob.type && /^image\/(jpeg|png|gif|webp)$/i.test(blob.type)
-                ? blob.type
-                : 'image/jpeg'
-            resolve({ base64: b64, mediaType })
-          }
-          reader.onerror = () => reject(reader.error || new Error('Could not read screenshot'))
-          reader.readAsDataURL(blob)
-        })
-    )
+    .then(async (blob) => {
+      const t = (blob.type || '').toLowerCase()
+      if (t.includes('heic') || t.includes('heif')) {
+        throw new Error(
+          'This photo format (HEIC) is not supported for auto-read. Export as JPEG/PNG or paste text instead.'
+        )
+      }
+      const { blob: compressedBlob, mediaType, meta } = await compressScreenshotBlob(blob)
+      const dataUrl = await readBlobAsDataUrl(compressedBlob)
+      const [, b64] = dataUrl.split(',')
+      return { base64: b64, mediaType, meta }
+    })
 }
 
 const MOCK_PROFILES = []
@@ -621,6 +733,8 @@ export default function AppMobile() {
   const [replyLoading, setReplyLoading] = useState(false)
   const [generatedReplies, setGeneratedReplies] = useState(MOCK_REPLY)
   const [generationError, setGenerationError] = useState('')
+  const [screenshotNotice, setScreenshotNotice] = useState('')
+  const [screenshotStatus, setScreenshotStatus] = useState('')
 
   const [screenshotOpen, setScreenshotOpen] = useState(false)
   const [screenshotPreview, setScreenshotPreview] = useState(null)
@@ -631,6 +745,11 @@ export default function AppMobile() {
   const handleScreenshotFile = useCallback((file) => {
     if (!file) return
     setGenerationError('')
+    setScreenshotStatus('')
+    const quickLong = file.size >= NOTICE_LARGE_BYTES
+      ? 'Large mobile screenshots will be compressed before upload.'
+      : ''
+    setScreenshotNotice(quickLong)
     screenshotFileRef.current = file
     const nextUrl = URL.createObjectURL(file)
     setScreenshotPreview((prev) => {
@@ -744,17 +863,22 @@ export default function AppMobile() {
       let imageMediaType
       if (hasImage) {
         try {
+          setScreenshotStatus('Optimizing screenshot for upload...')
           const file = screenshotFileRef.current
           const img = file
             ? await fileToImagePayload(file)
             : await blobUrlToImagePayload(screenshotPreview)
           imageBase64 = img.base64
           imageMediaType = img.mediaType
+          const nextNotice = buildScreenshotNotice(img.meta)
+          if (nextNotice) setScreenshotNotice(nextNotice)
+          setScreenshotStatus('')
           if (!String(imageBase64 || '').trim()) {
             throw new Error('Screenshot encoded empty; try re-uploading the image.')
           }
         } catch (e) {
           console.error('Screenshot read failed:', e)
+          setScreenshotStatus('')
           setGenerationError(
             String(e?.message || 'Could not read your screenshot. Try again or paste text instead.')
           )
@@ -852,6 +976,8 @@ export default function AppMobile() {
     screenshotFileRef.current = null
     setScreenshotPreview(null)
     setScreenshotOpen(false)
+    setScreenshotNotice('')
+    setScreenshotStatus('')
     setReplyMsg('')
     setMyIdea('')
     setGenerationError('')
@@ -1032,6 +1158,8 @@ export default function AppMobile() {
                         URL.revokeObjectURL(screenshotPreview)
                         screenshotFileRef.current = null
                         setScreenshotPreview(null)
+                        setScreenshotNotice('')
+                        setScreenshotStatus('')
                         if (fileInputRef.current) fileInputRef.current.value = ''
                       }}
                       aria-label="Remove screenshot"
@@ -1061,6 +1189,11 @@ export default function AppMobile() {
                   <div className="m-upload-hint">
                     AI reads the chat from your screenshot. You can leave the text box empty or add a note.
                   </div>
+                </div>
+              )}
+              {(screenshotStatus || screenshotNotice) && (
+                <div className={`m-upload-meta${screenshotStatus ? ' is-busy' : ''}`}>
+                  {screenshotStatus || screenshotNotice}
                 </div>
               )}
             </div>

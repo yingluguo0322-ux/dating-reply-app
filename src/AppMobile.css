@@ -289,6 +289,18 @@ body {
   text-align: center;
 }
 
+.m-upload-meta {
+  margin-top: 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #8A8A8A;
+}
+
+.m-upload-meta.is-busy {
+  color: #8E2A8A;
+  font-weight: 500;
+}
+
 .m-upload-thumb-row {
   position: relative;
   width: 100%;
