@@ -28,7 +28,7 @@ const MOCK_REPLY = {
   playful: 'Okay I was NOT expecting that but honestly... same energy 😭',
   flirty: "You can't just say that and expect me to act normal about it",
   witty: "Bold of you — my brain's still buffering lol",
-  charming: "That's genuinely one of the nicest things anyone's said to me in a while",
+  charming: "hm okay — I'll give you that one",
   sincere: 'that actually meant a lot — fr, thank you',
 }
 
@@ -70,6 +70,7 @@ Chic:
 - Show good taste and high standards
 - Elegant simplicity over elaborate explanations
 - Be intriguing through understated elegance
+- Skip cliché lines like "nicest thing anyone's said to me"—stay specific and composed, fresh wording every time.
 
 Sincere:
 - Genuine and authentic emotion
