@@ -192,14 +192,56 @@ export default function LandingPage({ onNext }) {
           JUST MY
         </p>
 
-          <div style={{ display:'flex', alignItems:'flex-end' }}>
-            {[['T',0.25],['Y',0.32],['P',0.39],['E',0.46]].map(([letter, delay]) => (
-              <span key={letter} style={{ fontWeight:700, fontSize:'5.2rem', color:'white', letterSpacing:'-0.03em', display:'inline-block', animation:`letterUp 0.5s cubic-bezier(0.22,1,0.36,1) ${delay}s both` }}>
-              {letter}
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
+            {[
+              ['T', 0.25],
+              ['Y', 0.32],
+              ['P', 0.39],
+            ].map(([letter, delay]) => (
+              <span
+                key={letter}
+                style={{
+                  fontWeight: 700,
+                  fontSize: '5.2rem',
+                  color: 'white',
+                  letterSpacing: '-0.03em',
+                  display: 'inline-block',
+                  animation: `letterUp 0.5s cubic-bezier(0.22,1,0.36,1) ${delay}s both`,
+                  lineHeight: 1,
+                }}
+              >
+                {letter}
+              </span>
+            ))}
+            <span
+              style={{
+                position: 'relative',
+                display: 'inline-block',
+                fontWeight: 700,
+                fontSize: '5.2rem',
+                color: 'white',
+                letterSpacing: '-0.03em',
+                lineHeight: 1,
+                animation: 'letterUp 0.5s cubic-bezier(0.22,1,0.36,1) 0.46s both',
+              }}
+            >
+              E
+              <span
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  right: '-0.04em',
+                  bottom: '0.11em',
+                  width: '0.095em',
+                  height: '0.095em',
+                  background: '#F5C8F0',
+                  borderRadius: 0,
+                  pointerEvents: 'none',
+                  animation: 'dotPop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.62s both',
+                }}
+              />
             </span>
-          ))}
-            <span style={{ display:'inline-block', width:'0.10em', height:'0.10em', background:'#F5C8F0', borderRadius:0, marginBottom:'0.18em', fontSize:'5.2rem', animation:'dotPop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.62s both' }} />
-        </div>
+          </div>
 
           <p style={{ fontWeight:400, fontSize:'0.7rem', letterSpacing:'0.22em', textTransform:'uppercase', color:'#F5C8F0', margin:'0.75rem 0 0', animation:'fadeUp 0.5s ease 0.8s both' }}>
           YOUR REPLY, PERFECTLY YOU
