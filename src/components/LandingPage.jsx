@@ -230,7 +230,7 @@ export default function LandingPage({ onNext }) {
                 aria-hidden
                 style={{
                   position: 'absolute',
-                  right: '-0.04em',
+                  right: '-0.16em',
                   bottom: '0.11em',
                   width: '0.095em',
                   height: '0.095em',
