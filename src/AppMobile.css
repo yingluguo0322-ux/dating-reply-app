@@ -30,7 +30,8 @@ body {
   min-height: -webkit-fill-available;
 }
 
-/* Room for fixed “new chat (same person)” FAB above bottom safe area */
+/* Room for History (left) + new-chat FAB above bottom safe area */
+.mobile-shell--with-bottom-fabs .mobile-scroll,
 .mobile-shell--with-new-chat-fab .mobile-scroll {
   padding-bottom: 84px;
 }
@@ -1283,5 +1284,288 @@ body {
   font-weight: 600;
   color: white;
   cursor: pointer;
+}
+
+/* --- Reply history: fixed bottom-left + full-screen slate deck --- */
+
+.m-history-text-btn {
+  position: fixed;
+  z-index: 55;
+  bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 10px));
+  left: calc((100vw - min(var(--mobile-max), 100vw)) / 2 + 14px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px;
+  margin: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(26, 26, 26, 0.38);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.m-history-text-btn:hover {
+  color: rgba(26, 26, 26, 0.52);
+}
+
+.m-history-text-btn:active {
+  color: rgba(26, 26, 26, 0.62);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.m-history-text-btn__icon {
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+
+.m-history-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.m-history-overlay__scrim {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  /* Match main shell (#F0F0F0): light veil so results/input stay visible, not a full-screen “black sheet”. */
+  background: rgba(240, 240, 240, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
+}
+
+/* Same width as .mobile-shell / input column — history UI is not wider than the app on phones. */
+.m-history-overlay__column {
+  position: relative;
+  z-index: 1;
+  width: min(100vw, var(--mobile-max));
+  max-width: var(--mobile-max);
+  height: 100%;
+  max-height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.m-history-sheet {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  pointer-events: none;
+}
+
+.m-history-sheet__head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 18px 12px;
+  pointer-events: auto;
+}
+
+.m-history-sheet__title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: -0.02em;
+}
+
+.m-history-sheet__close {
+  width: 40px;
+  height: 40px;
+  margin: -8px -6px -8px 0;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(26, 26, 26, 0.45);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.m-history-sheet__close:hover {
+  color: #1a1a1a;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.m-history-sheet__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 20px calc(28px + env(safe-area-inset-bottom, 0px));
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.m-history-sheet__scroll .m-history-card:first-child {
+  margin-top: 4px;
+}
+
+.m-history-empty {
+  color: rgba(26, 26, 26, 0.45);
+  font-size: 15px;
+  line-height: 1.45;
+  text-align: center;
+  padding: 48px 24px;
+  max-width: 280px;
+}
+
+.m-history-card {
+  width: 100%;
+  max-width: 340px;
+  margin-bottom: -38px;
+  padding: 0;
+  border: none;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    0 14px 36px rgba(0, 0, 0, 0.18);
+  position: relative;
+  transition: box-shadow 0.15s ease;
+  font-family: inherit;
+}
+
+.m-history-card:last-child {
+  margin-bottom: 0;
+}
+
+.m-history-card__delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(26, 26, 26, 0.42);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, color 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.m-history-card__delete:hover {
+  background: rgba(229, 62, 62, 0.12);
+  color: #c53030;
+}
+
+.m-history-card__delete:active {
+  background: rgba(229, 62, 62, 0.2);
+}
+
+.m-history-card__open {
+  width: 100%;
+  margin: 0;
+  padding: 18px 44px 16px 18px;
+  border: none;
+  border-radius: 18px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  transition: filter 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.m-history-card__open:active {
+  filter: brightness(0.97);
+}
+
+.m-history-card__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1.35;
+  margin: 0 0 8px;
+}
+
+.m-history-card__preview {
+  font-size: 14px;
+  font-weight: 500;
+  color: #7a7a7a;
+  line-height: 1.45;
+  margin: 0 0 12px;
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.m-history-card__flame-row {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8e2a8a;
+  margin: -4px 0 10px;
+  opacity: 0.9;
+}
+
+.m-history-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.m-history-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.m-history-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.m-history-card__time {
+  font-size: 12px;
+  font-weight: 500;
+  color: #a0a0a0;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 

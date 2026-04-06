@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import './AppMobile.css'
 import LandingPage from './components/LandingPage'
 import { STAGE_OPTIONS } from '../lib/stageLabels.js'
+import {
+  deleteReplySession,
+  formatRelativeSessionTime,
+  getReplyScreenshot,
+  listReplySessions,
+  saveReplySession,
+} from '../lib/replyHistoryIdb.js'
 import brandLogo from './assets/logo-purple.svg'
 
 const FLAME_KEY = 'flame_profiles'
@@ -739,9 +747,15 @@ export default function AppMobile() {
 
   const [screenshotOpen, setScreenshotOpen] = useState(false)
   const [screenshotPreview, setScreenshotPreview] = useState(null)
+
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyList, setHistoryList] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+
   const fileInputRef = useRef(null)
   /** Keep original File for vision API; avoids broken blob: URLs after revoke / React StrictMode. */
   const screenshotFileRef = useRef(null)
+  const historyScrollRef = useRef(null)
 
   const handleScreenshotFile = useCallback((file) => {
     if (!file) return
@@ -795,6 +809,7 @@ export default function AppMobile() {
     const id = `p-${Date.now()}`
     setProfiles((prev) => [...prev, { id, name, starred: false, createdAt: Date.now(), history: [] }])
     setActiveProfileId(id)
+    return { id, name }
   }, [])
 
   const renameProfile = useCallback((id, newName) => {
@@ -894,6 +909,9 @@ export default function AppMobile() {
 
       let effectiveTheirMessage = textForValidation.trim()
       let effectiveInterest = interestLevel
+      let sessionProfileId = activeProfileId
+      let sessionProfileName =
+        profiles.find((p) => p.id === activeProfileId)?.name ?? null
 
       if (hasImage && imageBase64) {
         try {
@@ -908,8 +926,12 @@ export default function AppMobile() {
             const n = String(ex.partnerDisplayName).trim()
             if (activeProfileId) {
               renameProfile(activeProfileId, n)
+              sessionProfileId = activeProfileId
+              sessionProfileName = n
             } else {
-              addProfile(n)
+              const created = addProfile(n)
+              sessionProfileId = created.id
+              sessionProfileName = created.name
             }
           }
           if (typeof ex.suggestedInterest0to5 === 'number') {
@@ -926,7 +948,11 @@ export default function AppMobile() {
         }
       }
 
+      const sessionTheirMsg = effectiveTheirMessage
+      const sessionInterest = effectiveInterest
+
       const startedAt = Date.now()
+      let finalReplies = MOCK_REPLY
       try {
         const replies = await fetchAiReplies({
           theirMessage: effectiveTheirMessage,
@@ -935,10 +961,12 @@ export default function AppMobile() {
           interestLevelOverride: effectiveInterest,
         })
         if (reqId !== genReqIdRef.current) return
+        finalReplies = replies
         setGeneratedReplies(replies)
       } catch (error) {
         if (reqId !== genReqIdRef.current) return
         // Keep UI usable even when API fails.
+        finalReplies = MOCK_REPLY
         setGeneratedReplies(MOCK_REPLY)
         const errMsg = String(error?.message || 'Unknown error')
         setGenerationError(`Fallback: ${errMsg}`)
@@ -948,14 +976,46 @@ export default function AppMobile() {
         if (elapsed < 1500) await sleep(1500 - elapsed)
         if (reqId === genReqIdRef.current) setReplyLoading(false)
       }
+
+      if (reqId !== genReqIdRef.current) return
+
+      const storedReplies = {}
+      for (const k of STYLE_KEYS) {
+        if (finalReplies[k]) storedReplies[k] = finalReplies[k]
+      }
+      const snap = {
+        id: crypto.randomUUID(),
+        createdAt: Date.now(),
+        profileId: sessionProfileId,
+        profileName: sessionProfileName,
+        replyMsg: sessionTheirMsg,
+        myIdea,
+        replyStyles: [...replyStyles],
+        stageLevel,
+        stageApplied,
+        interestLevel: sessionInterest,
+        interestApplied,
+        generatedReplies: storedReplies,
+      }
+      try {
+        const shot = screenshotFileRef.current
+        await saveReplySession(snap, shot && shot.size > 0 ? shot : null)
+      } catch (histErr) {
+        console.warn('Reply history save failed:', histErr)
+      }
     },
     [
       activeProfileId,
       addProfile,
       fetchAiReplies,
       interestLevel,
+      interestApplied,
+      myIdea,
+      profiles,
       renameProfile,
       replyStyles,
+      stageApplied,
+      stageLevel,
       screenshotPreview,
     ]
   )
@@ -1006,6 +1066,101 @@ export default function AppMobile() {
       prev.map((p) => (p.id === activeProfileId ? { ...p, history: [...p.history, entry] } : p))
     )
   }, [activeProfileId, replyMsg])
+
+  const openHistoryPanel = useCallback(() => {
+    setHistoryOpen(true)
+    setHistoryLoading(true)
+    listReplySessions()
+      .then((rows) => setHistoryList(rows))
+      .catch(() => setHistoryList([]))
+      .finally(() => setHistoryLoading(false))
+  }, [])
+
+  const removeHistorySession = useCallback(async (id) => {
+    if (!id) return
+    try {
+      await deleteReplySession(id)
+      setHistoryList((prev) => prev.filter((r) => r.id !== id))
+    } catch (e) {
+      console.warn('Delete history failed:', e)
+    }
+  }, [])
+
+  /** Newest sessions at bottom of list (near History control); scroll there when opening. */
+  useEffect(() => {
+    if (!historyOpen || historyLoading || historyList.length === 0) return
+    const el = historyScrollRef.current
+    if (!el) return
+    let id2 = 0
+    const id1 = requestAnimationFrame(() => {
+      id2 = requestAnimationFrame(() => {
+        el.scrollTop = el.scrollHeight - el.clientHeight
+      })
+    })
+    return () => {
+      cancelAnimationFrame(id1)
+      cancelAnimationFrame(id2)
+    }
+  }, [historyOpen, historyLoading, historyList])
+
+  const applyHistorySession = useCallback(
+    async (row) => {
+      if (!row?.id) return
+      setGenerationError('')
+      setScreenshotStatus('')
+      setScreenshotNotice('')
+      setScreenshotOpen(false)
+
+      if (screenshotPreview) {
+        URL.revokeObjectURL(screenshotPreview)
+      }
+      screenshotFileRef.current = null
+      setScreenshotPreview(null)
+
+      let imgData = null
+      try {
+        imgData = await getReplyScreenshot(row.id)
+      } catch {
+        imgData = null
+      }
+      if (imgData?.blob) {
+        const file = new File([imgData.blob], 'history-screenshot.jpg', {
+          type: imgData.mediaType || 'image/jpeg',
+        })
+        screenshotFileRef.current = file
+        setScreenshotPreview(URL.createObjectURL(file))
+      }
+
+      setReplyMsg(typeof row.replyMsg === 'string' ? row.replyMsg : '')
+      setMyIdea(typeof row.myIdea === 'string' ? row.myIdea : '')
+      const styles = Array.isArray(row.replyStyles)
+        ? row.replyStyles.filter((k) => STYLE_KEYS.includes(k))
+        : []
+      setReplyStyles(styles.length ? styles : ['playful'])
+
+      setStageLevel(Math.min(5, Math.max(1, Number(row.stageLevel) || 1)))
+      setStageApplied(Boolean(row.stageApplied))
+      setStageDraft(Math.min(5, Math.max(1, Number(row.stageLevel) || 1)))
+      const interestRaw = Number(row.interestLevel)
+      const interestN = Number.isFinite(interestRaw) ? interestRaw : 3
+      setInterestLevel(Math.min(5, Math.max(0, interestN)))
+      setInterestApplied(Boolean(row.interestApplied))
+      setInterestDraft(Math.min(5, Math.max(0, interestN)))
+
+      setGeneratedReplies({ ...MOCK_REPLY, ...(row.generatedReplies || {}) })
+
+      if (row.profileId && profiles.some((p) => p.id === row.profileId)) {
+        setActiveProfileId(row.profileId)
+      } else {
+        setActiveProfileId(null)
+      }
+
+      setPhase('input')
+      setHistoryOpen(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    },
+    [profiles, screenshotPreview]
+  )
 
   useEffect(() => {
     try {
@@ -1060,11 +1215,12 @@ export default function AppMobile() {
     return <LandingPage onNext={() => setShowLanding(false)} />
   }
 
-  /* Show on main composer whenever overlays are closed, not only when a Flame is picked (then header can say "Add a name"). */
-  const showNewChatFab = !drawerOpen && sheet === null
+  /* Room for bottom History (left) + new-chat FAB (right). */
+  const showBottomFabs = !drawerOpen && sheet === null
+  const showNewChatFab = showBottomFabs
 
   return (
-    <div className={`mobile-shell${showNewChatFab ? ' mobile-shell--with-new-chat-fab' : ''}`}>
+    <div className={`mobile-shell${showBottomFabs ? ' mobile-shell--with-bottom-fabs' : ''}`}>
       <div className="mobile-scroll">
         <div className="m-header">
           <TLogoButton
@@ -1404,6 +1560,155 @@ export default function AppMobile() {
         }}
         onClose={() => setSheet(null)}
       />
+
+      {showBottomFabs && (
+        <button
+          type="button"
+          className="m-history-text-btn"
+          onClick={openHistoryPanel}
+          aria-label="Open reply history"
+        >
+          <svg
+            className="m-history-text-btn__icon"
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            aria-hidden
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+          <span>History</span>
+        </button>
+      )}
+
+      {historyOpen &&
+        createPortal(
+          <div
+            className="m-history-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Reply history"
+          >
+            <button
+              type="button"
+              className="m-history-overlay__scrim"
+              aria-label="Close history"
+              onClick={() => setHistoryOpen(false)}
+            />
+            <div className="m-history-overlay__column">
+              <div className="m-history-sheet">
+                <div className="m-history-sheet__head">
+                  <span className="m-history-sheet__title">History</span>
+                  <button
+                    type="button"
+                    className="m-history-sheet__close"
+                    onClick={() => setHistoryOpen(false)}
+                    aria-label="Close"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="m-history-sheet__scroll" ref={historyScrollRef}>
+                  {historyLoading ? (
+                    <div className="m-history-empty">Loading…</div>
+                  ) : historyList.length === 0 ? (
+                    <div className="m-history-empty">
+                      No saved replies yet. Generate once and it will show up here.
+                    </div>
+                  ) : (
+                    [...historyList].reverse().map((row, idx) => {
+                    const titleRaw =
+                      String(row.replyMsg || '').trim() ||
+                      (row.profileName ? 'Chat screenshot' : 'Draft')
+                    const quotedTitle =
+                      titleRaw.startsWith('"') && titleRaw.endsWith('"') ? titleRaw : `"${titleRaw}"`
+                    const firstKey = Array.isArray(row.replyStyles) ? row.replyStyles[0] : null
+                    const previewRaw =
+                      firstKey && row.generatedReplies?.[firstKey]
+                        ? String(row.generatedReplies[firstKey])
+                        : Object.values(row.generatedReplies || {})[0] || ''
+                    const preview =
+                      previewRaw.length > 80 ? `${previewRaw.slice(0, 79)}…` : previewRaw
+                    /* Oldest idx 0 at top; largest idx / z-index = newest at bottom of deck. */
+                    const tilt = ((idx % 5) - 2) * 1.35
+                    const stackZ = idx + 1
+                    return (
+                      <article
+                        key={row.id}
+                        className="m-history-card"
+                        style={{
+                          transform: `rotate(${tilt}deg)`,
+                          zIndex: stackZ,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className="m-history-card__delete"
+                          aria-label="Delete from history"
+                          title="Delete"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            void removeHistorySession(row.id)
+                          }}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                            <path
+                              d="M9 3h6l1 2h5v2H3V5h5l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM5 9h14l-1 12H6L5 9z"
+                              fill="currentColor"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          className="m-history-card__open"
+                          onClick={() => void applyHistorySession(row)}
+                        >
+                          <div className="m-history-card__title">{quotedTitle}</div>
+                          {preview ? (
+                            <div className="m-history-card__preview">{preview}</div>
+                          ) : null}
+                          {row.profileName ? (
+                            <div className="m-history-card__flame-row">{row.profileName}</div>
+                          ) : null}
+                          <div className="m-history-card__foot">
+                            <div className="m-history-card__tags">
+                              {(row.replyStyles || []).map((k) =>
+                                STYLE_KEYS.includes(k) ? (
+                                  <span
+                                    key={k}
+                                    className="m-history-tag"
+                                    style={{
+                                      background: STYLE_COLORS[k].phoneBg,
+                                      color: STYLE_COLORS[k].text,
+                                      border: `1px solid ${STYLE_COLORS[k].chipBorder}`,
+                                    }}
+                                  >
+                                    {STYLE_LABELS[k]}
+                                  </span>
+                                ) : null
+                              )}
+                            </div>
+                            <span className="m-history-card__time">
+                              {formatRelativeSessionTime(row.createdAt)}
+                            </span>
+                          </div>
+                        </button>
+                      </article>
+                    )
+                  })
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {showNewChatFab && (
         <button
