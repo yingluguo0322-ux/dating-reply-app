@@ -1032,6 +1032,34 @@ export default function AppMobile() {
       const sessionTheirMsg = effectiveTheirMessage
       const sessionInterest = effectiveInterest
 
+      const persistThisGeneration = async (replyState) => {
+        const storedReplies = {}
+        for (const k of STYLE_KEYS) {
+          if (replyState[k]) storedReplies[k] = replyState[k]
+        }
+        const snap = {
+          id: crypto.randomUUID(),
+          createdAt: Date.now(),
+          profileId: sessionProfileId,
+          profileName: sessionProfileName,
+          replyMsg: sessionTheirMsg,
+          myIdea,
+          replyStyles: [...replyStyles],
+          stageLevel,
+          stageApplied,
+          interestLevel: sessionInterest,
+          interestApplied,
+          generatedReplies: storedReplies,
+        }
+        try {
+          const shot = screenshotFileRef.current
+          await saveReplySession(snap, shot && shot.size > 0 ? shot : null)
+          listReplySessions().then(setHistoryList).catch(() => {})
+        } catch (histErr) {
+          console.warn('Reply history save failed:', histErr)
+        }
+      }
+
       const startedAt = Date.now()
       let finalReplies = MOCK_REPLY
       try {
@@ -1044,6 +1072,7 @@ export default function AppMobile() {
         if (reqId !== genReqIdRef.current) return
         finalReplies = replies
         setGeneratedReplies(replies)
+        await persistThisGeneration(replies)
       } catch (error) {
         if (reqId !== genReqIdRef.current) return
         // Keep UI usable even when API fails (rotating placeholders, not one fixed pair).
@@ -1052,38 +1081,11 @@ export default function AppMobile() {
         const errMsg = String(error?.message || 'Unknown error')
         setGenerationError(`Fallback: ${errMsg}`)
         console.error('AI generation failed:', error)
+        await persistThisGeneration(finalReplies)
       } finally {
         const elapsed = Date.now() - startedAt
         if (elapsed < 1500) await sleep(1500 - elapsed)
         if (reqId === genReqIdRef.current) setReplyLoading(false)
-      }
-
-      if (reqId !== genReqIdRef.current) return
-
-      const storedReplies = {}
-      for (const k of STYLE_KEYS) {
-        if (finalReplies[k]) storedReplies[k] = finalReplies[k]
-      }
-      const snap = {
-        id: crypto.randomUUID(),
-        createdAt: Date.now(),
-        profileId: sessionProfileId,
-        profileName: sessionProfileName,
-        replyMsg: sessionTheirMsg,
-        myIdea,
-        replyStyles: [...replyStyles],
-        stageLevel,
-        stageApplied,
-        interestLevel: sessionInterest,
-        interestApplied,
-        generatedReplies: storedReplies,
-      }
-      try {
-        const shot = screenshotFileRef.current
-        await saveReplySession(snap, shot && shot.size > 0 ? shot : null)
-        listReplySessions().then(setHistoryList).catch(() => {})
-      } catch (histErr) {
-        console.warn('Reply history save failed:', histErr)
       }
     },
     [
