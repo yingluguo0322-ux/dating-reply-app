@@ -56,10 +56,8 @@ const MOCK_REPLY_POOLS = {
     'I’ll allow it, that was good',
   ],
   sincere: [
-    'that actually meant a lot, fr, thank you',
-    'genuinely appreciate you saying that',
-    'that stuck with me more than I expected, thanks',
-    'thank you, that landed softer than you probably know',
+    "Sincere line didn’t stick. Tap Generate again to tie it to their message.",
+    'Need another try, hit Generate for a reply grounded in what they said.',
   ],
 }
 
@@ -141,7 +139,8 @@ Sincere:
 - Direct and honest communication
 - Use empathy to connect
 - Build real emotional depth
-- Avoid canned, formal gratitude lines (especially long stock thank-yous); say it in a fresh, real way each time.
+- **Ground every reply in their actual message:** quote, paraphrase, or react to something concrete they said or showed. Never send gratitude or praise that fits any chat without referencing what THEY said.
+- Avoid canned thank-yous ("meant a lot", "thanks for saying that") unless you clearly tie them to a specific detail from the thread.
 
 **How it should read (all styles):**
 - Like a real person typing in chat: spoken, relaxed, not formal prose or a speech.
@@ -159,7 +158,7 @@ Sincere:
 5. If it feels forced or scripted, DELETE IT
 6. Use punctuation and emoji naturally, not as crutches
 7. Create a response unique to THIS moment, THIS person
-8. Never reuse these demo lines verbatim or with tiny tweaks: "hm okay, I'll give you that one", "that actually meant a lot, fr, thank you". Always invent new wording.
+8. Do not output filler gratitude or clichés that ignore the specific message you were given. Each reply must prove you read THIS thread.
 9. Do not use em dash (—) or en dash (–) between phrases; use a comma or split sentences (same as the server: no long-dash connectors in user-facing replies).
 `
 
@@ -836,7 +835,6 @@ export default function AppMobile() {
 
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyList, setHistoryList] = useState([])
-  const [historyLoading, setHistoryLoading] = useState(false)
 
   const fileInputRef = useRef(null)
   /** Keep original File for vision API; avoids broken blob: URLs after revoke / React StrictMode. */
@@ -1083,6 +1081,7 @@ export default function AppMobile() {
       try {
         const shot = screenshotFileRef.current
         await saveReplySession(snap, shot && shot.size > 0 ? shot : null)
+        listReplySessions().then(setHistoryList).catch(() => {})
       } catch (histErr) {
         console.warn('Reply history save failed:', histErr)
       }
@@ -1152,12 +1151,25 @@ export default function AppMobile() {
 
   const openHistoryPanel = useCallback(() => {
     setHistoryOpen(true)
-    setHistoryLoading(true)
     listReplySessions()
       .then((rows) => setHistoryList(rows))
       .catch(() => setHistoryList([]))
-      .finally(() => setHistoryLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (showLanding) return
+    let cancelled = false
+    listReplySessions()
+      .then((rows) => {
+        if (!cancelled) setHistoryList(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setHistoryList([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [showLanding])
 
   const removeHistorySession = useCallback(async (id) => {
     if (!id) return
@@ -1171,7 +1183,7 @@ export default function AppMobile() {
 
   /** Newest sessions at bottom of list (near History control); scroll there when opening. */
   useEffect(() => {
-    if (!historyOpen || historyLoading || historyList.length === 0) return
+    if (!historyOpen || historyList.length === 0) return
     const el = historyScrollRef.current
     if (!el) return
     let id2 = 0
@@ -1184,7 +1196,7 @@ export default function AppMobile() {
       cancelAnimationFrame(id1)
       cancelAnimationFrame(id2)
     }
-  }, [historyOpen, historyLoading, historyList])
+  }, [historyOpen, historyList])
 
   const applyHistorySession = useCallback(
     async (row) => {
@@ -1697,9 +1709,7 @@ export default function AppMobile() {
                   </button>
                 </div>
                 <div className="m-history-sheet__scroll" ref={historyScrollRef}>
-                  {historyLoading ? (
-                    <div className="m-history-empty">Loading…</div>
-                  ) : historyList.length === 0 ? (
+                  {historyList.length === 0 ? (
                     <div className="m-history-empty">
                       No saved replies yet. Generate once and it will show up here.
                     </div>
